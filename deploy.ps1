@@ -1,9 +1,9 @@
-Param 
-(
-    [parameter(Mandatory = $true)]
-    [ValidateSet('STDBDECSUP01','STDBDECSUP02','STDBDECSUP03','SPDBDECSUP04','PC')]
-    [string] $DeploymentSqlServer
-)
+# Param 
+# (
+#     [parameter(Mandatory = $true)]
+#     [ValidateSet('STDBDECSUP01','STDBDECSUP02','STDBDECSUP03','SPDBDECSUP04','PC')]
+#     [string] $DeploymentSqlServer
+# )
 Set-Location -Path $PSScriptRoot
 
 # # # # these if's are ran when [parameter(Mandatory = $false)]

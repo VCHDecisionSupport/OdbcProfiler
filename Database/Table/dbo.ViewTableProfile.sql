@@ -12,7 +12,7 @@ CREATE TABLE dbo.ViewTableProfile
 (
     ViewTableProfileID INT IDENTITY(1,1)
     ,ViewTableInfoID INT NOT NULL
-    ,ProfileDate SMALLDATETIME
+    ,ProfileDate DATETIME
     ,ViewTableRowCount INT
 )
 GO
