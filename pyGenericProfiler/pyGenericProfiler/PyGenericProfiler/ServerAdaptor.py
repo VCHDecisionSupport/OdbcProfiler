@@ -95,7 +95,7 @@ class DenodoSchema(Schema):
     def __init__(self, server_name, database_name):
         self.__server_name = server_name
         self.__database_name = database_name
-        self.__source_connection_string = "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT=9996;".format(
+        self.__source_connection_string = "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT=9999;".format(
             self.__server_name, self.__database_name)
         print('{}: {}'.format(self.__class__.__name__, self.__server_name))
         super(DenodoSchema, self).__init__(self.__source_connection_string)
@@ -165,14 +165,14 @@ if __name__ == '__main__':
     # con = OdbcServerConnection('PC_Sql')
     # con.info()
 
-    sql = MsSql('PC')
-    print(list(sql.databases()))
+    # sql = MsSql('PC')
+    # print(list(sql.databases()))
 
-    den = DenodoSchema('PC', 'admin')
+    den = DenodoSchema('SPAPPDEN001', 'sandbox_paris')
     print(list(den.databases()))
 
-    input = GenericProfileMsSqlInput('PC')
-    input.populate(den)
+    # input = GenericProfileMsSqlInput('PC')
+    # input.populate(den)
 
     # print(list(sql.tables()))
     # print(list(sql.columns()))
