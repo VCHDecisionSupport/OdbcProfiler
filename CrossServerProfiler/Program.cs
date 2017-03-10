@@ -17,16 +17,26 @@ namespace CrossServerProfiler
             database_name = "sandbox_paris";
             int port;
             port = 9996;
+            DenodoConnection den = null;
+            Profiler profiler = null;
+            try
+            {
+                den = new DenodoConnection(server_name, database_name, port);
 
-            DenodoOdbc den = new DenodoOdbc(server_name, database_name, port);
-            foreach (var item in den.Databases())
-            {
-                Console.WriteLine(item);
+                string profile_server, profile_database;
+                profile_server = "STDBDECSUP01";
+                profile_database = "GenericProfiles";
+                profiler = new Profiler(profile_server, profile_database);
+                profiler.ExecuteProfile(den);
             }
-            foreach (var item in den.Tables())
+            finally
             {
-                Console.WriteLine(item);
+                den.Close();
+                profiler.Close();
             }
+            
+
+            
             Console.WriteLine("done");
             Console.ReadKey();
 

@@ -84,6 +84,18 @@ namespace CrossServerProfiler
         {
             return new SqlOdbc(server_name_, database_name);
         }
+        public Dictionary<string, OdbcCommand> GetRowCountQueries()
+        {
+            List<string> tables = Tables();
+            Dictionary<string, OdbcCommand> rowCountQueries = new Dictionary<string, OdbcCommand>();
+            foreach (var table_name in tables)
+            {
+                var cmd = CreateCommand();
+                cmd.CommandText = $"SELECT COUNT(*) AS TableRowCount FROM {table_name};";
+                rowCountQueries.Add(table_name, cmd);
+            }
+            return rowCountQueries;
+        }
     }
 
     public class DenodoOdbc : OdbcServerConnection
@@ -133,5 +145,20 @@ namespace CrossServerProfiler
         {
             return new DenodoOdbc(server_name_, database_name, port_);
         }
+        public Dictionary<string, OdbcCommand> GetRowCountQueries()
+        {
+            List<string> tables = Tables();
+            Dictionary<string, OdbcCommand> rowCountQueries = new Dictionary<string, OdbcCommand>();
+            foreach (var table_name in tables)
+            {
+                var cmd = CreateCommand();
+                cmd.CommandText = $"SELECT COUNT(*) AS TableRowCount FROM {table_name};";
+                rowCountQueries.Add(table_name, cmd);
+            }
+            return rowCountQueries;
+        }
+        
     }
+
+
 }

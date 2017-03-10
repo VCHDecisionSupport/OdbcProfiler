@@ -1,9 +1,9 @@
-Param 
-(
-    [parameter(Mandatory = $true)]
-    [ValidateSet('STDBDECSUP01','STDBDECSUP02','STDBDECSUP03','SPDBDECSUP04','PC')]
-    [string] $DeploymentSqlServer
-)
+﻿# Param 
+# (
+#     [parameter(Mandatory = $true)]
+#     [ValidateSet('STDBDECSUP01','STDBDECSUP02','STDBDECSUP03','SPDBDECSUP04','PC')]
+#     [string] $DeploymentSqlServer
+# )
 Set-Location -Path $PSScriptRoot
 
 # # # # these if's are ran when [parameter(Mandatory = $false)]
@@ -32,8 +32,6 @@ $sql_scripts = New-Object System.Collections.ArrayList
 [void]$sql_scripts.Add("Database/Table/dbo.DatabaseInfo.sql")
 [void]$sql_scripts.Add("Database/Table/dbo.ViewTableInfo.sql")
 [void]$sql_scripts.Add("Database/Table/dbo.ViewTableProfile.sql")
-[void]$sql_scripts.Add("Database/StoredProcedure/dbo.uspInsViewTableInfo.sql")
-[void]$sql_scripts.Add("Database/StoredProcedure/dbo.uspInsViewTableProfile.sql")
 
 
 foreach($sql_script in $sql_scripts)
