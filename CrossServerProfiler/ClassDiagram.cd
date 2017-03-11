@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="CrossServerProfiler.DatabaseConnection" Collapsed="true">
+    <Position X="3.25" Y="3" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>IAAAAAEAAEAAIAAAAAAGQIEAAiBAABAAAAAAAACAAAA=</HashCode>
+      <FileName>OdbcProfiler.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="CrossServerProfiler.ProfileHelper" Collapsed="true">
+    <Position X="0.5" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>OdbcProfiler.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CrossServerProfiler.DenodoConnection" Collapsed="true">
+    <Position X="3.25" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAEAAIIAAAABCAAAAAAAAABAAAAAAAQAAAAA=</HashCode>
+      <FileName>OdbcProfiler.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CrossServerProfiler.Profiler" Collapsed="true">
+    <Position X="0.5" Y="4.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAEIAAAIAEAIAAAiAAAAAAAQAAAQCAAAA=</HashCode>
+      <FileName>OdbcProfiler.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CrossServerProfiler.Program" Collapsed="true">
+    <Position X="0.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=</HashCode>
+      <FileName>Program.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Interface Name="CrossServerProfiler.IDatabaseConnection" Collapsed="true">
+    <Position X="3.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>IAAAAAEAAEAAIAAAAAAGQIAAAABAABAAAAAAAACAAAA=</HashCode>
+      <FileName>OdbcProfiler.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="CrossServerProfiler.IDatabaseProfile" Collapsed="true">
+    <Position X="3.5" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>OdbcProfiler.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

@@ -13,5 +13,7 @@ CREATE TABLE dbo.ServerInfo
     ServerInfoID INT IDENTITY(1,1)
     ,ServerName VARCHAR(100)
     ,ServerType VARCHAR(100)
+	,CONSTRAINT PK_ServerInfo PRIMARY KEY NONCLUSTERED (ServerInfoID)
+	,CONSTRAINT CI_ServerInfo UNIQUE CLUSTERED (ServerName, ServerType)
 )
 GO

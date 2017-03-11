@@ -63,29 +63,3 @@ BEGIN
 END
 GO
 
-DECLARE @ServerName VARCHAR(100) = 'sname'
-    ,@ServerType VARCHAR(100) = 'stype'
-    ,@DatabaseName VARCHAR(100) = 'dbname'
-    ,@PhysicalViewTableName VARCHAR(500) = 'vtname'
-    ,@RowCount INT = 1235
-    ,@ViewTableProfileId INT
-    ,@ProfileIsoDateStr VARCHAR(23) = '2012-01-06T16:02:52.658'
-EXEC dbo.uspInsViewTableProfile @ServerName = @ServerName
-    ,@ServerType = @ServerType
-    ,@DatabaseName = @DatabaseName
-    ,@PhysicalViewTableName = @PhysicalViewTableName
-    ,@RowCount = @RowCount
-	,@ViewTableProfileId = @ViewTableProfileId OUTPUT
-	,@ProfileIsoDateStr = @ProfileIsoDateStr
-	,@Debug = 1
-
-
-TRUNCATE TABLE GenericProfiles.dbo.ServerInfo;
-TRUNCATE TABLE GenericProfiles.dbo.DatabaseInfo;
-TRUNCATE TABLE GenericProfiles.dbo.ViewTableInfo;
-TRUNCATE TABLE GenericProfiles.dbo.ViewTableProfile;
-SELECT * FROM GenericProfiles.dbo.ServerInfo;
-SELECT * FROM GenericProfiles.dbo.DatabaseInfo;
-SELECT * FROM GenericProfiles.dbo.ViewTableInfo;
-SELECT * FROM GenericProfiles.dbo.ViewTableProfile;
-SELECT @ViewTableProfileId AS ViewTableProfileId;

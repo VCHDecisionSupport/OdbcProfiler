@@ -14,5 +14,14 @@ CREATE TABLE dbo.ViewTableInfo
     ,DatabaseInfoID INT NOT NULL
     ,PhysicalViewTableName VARCHAR(100) NOT NULL-- if sql: "database_name"."schema_name"."table_name" -- if dendoo "database_name"."table_name"
     ,LogicalViewTablePath VARCHAR(100) -- if sql: "database_name"."schema_name"."table_name" -- if dendoo "database_name"/"root_folder"/"folder"/.../"parent_folder"/"table_name"
+	,CONSTRAINT PK_ViewTableInfo PRIMARY KEY NONCLUSTERED (ViewTableInfoID)
+	,CONSTRAINT CI_ViewTableInfo UNIQUE CLUSTERED (PhysicalViewTableName)
 )
 GO
+
+ALTER TABLE dbo.ViewTableInfo     
+ADD CONSTRAINT FK_ViewTableInfo_DatabaseInfo FOREIGN KEY (DatabaseInfoID)     
+    REFERENCES dbo.DatabaseInfo (DatabaseInfoID)     
+    ON DELETE CASCADE    
+    ON UPDATE CASCADE    
+;    
