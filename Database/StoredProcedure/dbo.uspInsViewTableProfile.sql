@@ -12,7 +12,7 @@ ALTER PROCEDURE dbo.uspInsViewTableProfile
     ,@DatabaseName VARCHAR(100)
     ,@PhysicalViewTableName VARCHAR(500)
     ,@RowCount INT
-	,@ViewTableProfileID INT OUTPUT
+	-- ,@ViewTableProfileID INT OUTPUT
 	,@ProfileIsoDateStr VARCHAR(23) = NULL -- eg. '2012-01-06T16:02:52.658'
 	,@Debug bit = 0
 AS
@@ -22,6 +22,7 @@ BEGIN
 		,@ServerInfoId INT
 		,@DatabaseInfoId INT
 		,@ViewTableInfoId INT
+		,@ViewTableProfileID INT
 		,@ViewTableProfileDate DATETIME;
 	IF @Debug = 1
 	BEGIN
@@ -60,6 +61,7 @@ BEGIN
 	BEGIN
 		SELECT @ViewTableProfileId AS ViewTableProfileId;
 	END
+    RETURN(@ViewTableProfileId)
 END
 GO
 

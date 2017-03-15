@@ -100,7 +100,7 @@ BEGIN
 	BEGIN
 		SELECT @ViewTableInfoId AS ViewTableInfoId;
 	END
-
+    RETURN(@ViewTableInfoId)
 END
 GO
 

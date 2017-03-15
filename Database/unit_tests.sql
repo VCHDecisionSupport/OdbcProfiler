@@ -1,3 +1,5 @@
+USE GenericProfiles
+GO
 
 DECLARE @ServerName VARCHAR(100) = 'sname'
     ,@ServerType VARCHAR(100) = 'stype'
@@ -5,16 +7,18 @@ DECLARE @ServerName VARCHAR(100) = 'sname'
     ,@PhysicalViewTableName VARCHAR(500) = 'vtname'
     ,@RowCount INT = 1235
     ,@ViewTableProfileId INT
+    ,@ReturnViewTableProfileId INT
     ,@ProfileIsoDateStr VARCHAR(23) = '2012-01-06T16:02:52.658'
-EXEC dbo.uspInsViewTableProfile 
+EXEC @ReturnViewTableProfileId = dbo.uspInsViewTableProfile 
 	@ServerName = @ServerName
     ,@ServerType = @ServerType
     ,@DatabaseName = @DatabaseName
     ,@PhysicalViewTableName = @PhysicalViewTableName
     ,@RowCount = @RowCount
-	,@ViewTableProfileId = @ViewTableProfileId OUTPUT
+	--,@ViewTableProfileId = @ViewTableProfileId OUTPUT
 	,@ProfileIsoDateStr = @ProfileIsoDateStr
 
+SELECT @ReturnViewTableProfileId AS [@ReturnViewTableProfileId]
 
 TRUNCATE TABLE GenericProfiles.dbo.ViewTableProfile;
 TRUNCATE TABLE GenericProfiles.dbo.ViewTableInfo;
