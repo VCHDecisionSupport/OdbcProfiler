@@ -1,6 +1,0 @@
-{
-    "ODBC Connection Strings" : 
-    {
-        "Prod_DSDW" : "DRIVER={ODBC Driver 11 for SQL Server};SERVER=SPDBDECSUP04;Trusted_Connection=Yes;"
-    }
-}
