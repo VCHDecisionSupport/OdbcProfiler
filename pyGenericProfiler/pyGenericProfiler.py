@@ -1,14 +1,12 @@
 import pyodbc
 import uuid
 
-# TODO add abstract OdbcProfile class: OdbcConnection: OdbcProfile -> PlatformProfile classes
-# with row_count_query format param
 
 denodo_dsn = 'DenodoODBC'
 sql_server_dsn = 'DevOdbcSqlServer'
 logging_dsn = 'GenericProfiles'
 
-denodo_con_lambda = lambda server_name, database_name: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT=9999;".format(server_name, database_name)
+denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
@@ -18,7 +16,7 @@ class OdbcConnection(object):
         self.database_name = database_name
         self.connection_lambda = connection_lambda
         self.odbc_con_str = self.connection_lambda(self.server_name, self.database_name)
-        self.row_count_query_format = row_count_query_format
+        # self.row_count_query_format = row_count_query_format
         # self.connection = pyodbc.connect(self.odbc_con_str)
         self.connection = None
 
@@ -64,8 +62,6 @@ class OdbcConnection(object):
         # for table_name in self.tables():
 
 
-
-
 class DenodoProfiler(OdbcConnection):
     def __init__(self, connection_lambda, server_name, database_name):
         super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name)
@@ -101,41 +97,28 @@ SELECT * FROM tempdb.dbo.{};"""
         cur.execute(databases_query)
         return cur
 
-class ProfileLogger(OdbcConnection):
-    def __init__(self, connection_lambda, server_name, database_name):
-        super(ProfileLogger, self).__init__(connection_lambda, server_name, database_name)
 
-    def log_table_profile(self, table_profile_params):
-        self.connect()
-        cur = self.connection.cursor()
-        sql = """DECLARE @out int; EXEC @out = GenericProfiles.dbo.uspInsViewTableProfile ?, ?, ?, ?, ?; SELECT @out;"""
-        cur.execute(sql,table_profile_params)
-        table_profile_id = cur.fetchone()[0]
-        return table_profile_id
+
+
 if __name__ == '__main__':
-    # profile_me = OdbcConnection(denodo_dsn)
-    # profile_me.tables()
-
-    # profile_me = DenodoProfiler(denodo_dsn)
-    # dbs = profile_me.databases()
-    # print(dbs)
-    # for db in dbs:
-    #     print(db)
-    # tabs = profile_me.tables()
-    # print(tabs)
-
-
-    # profile_me = SqlServerProfiler(sql_server_dsn)
-    # dbs = profile_me.databases()
-    # print(dbs)
-    # for db in dbs:
-    #     print(db)
-    # tabs = profile_me.tables()
-    # print(tabs)
-
-    pro = ProfileLogger(sql_server_con_lambda, 'STDBDECSUP01', 'GenericProfiles')
-    # pro.log_table_profile(('abc','sdfa','python','sdfas',123))
-    tabs = pro.tables()
+    
+    denodo = DenodoProfiler(denodo_con_lambda, 'SPAPPDEN001', 'sandbox_paris')
+    tabs = denodo.tables()
     for tab in tabs:
         print(tab)
+        sql = "SELECT COUNT(*) FROM {table_cat}.{table_name}".format(table_cat=tab.table_cat, table_name=tab.table_name)
+        cur = denodo.connection.cursor()
+        row_count = cur.execute(sql).fetchone()
+        print(row_count)
+
+    dsdw = SqlServerProfiler(sql_server_con_lambda, 'STDBDECSUP02', 'DSDW')
+    tabs = denodo.tables()
+    for tab in tabs:
+        print(tab)
+        sql = "SELECT COUNT(*) FROM {table_cat}.{table_schem}.{table_name}".format(table_cat=tab.table_cat, table_schem=tab.table_schem, table_name=tab.table_name)
+        cur = denodo.connection.cursor()
+        row_count = cur.execute(sql).fetchone()
+        print(row_count)
+
+
 
