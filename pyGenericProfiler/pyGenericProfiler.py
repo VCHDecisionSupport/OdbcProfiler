@@ -1,6 +1,6 @@
 import pyodbc
 import uuid
-
+import GenericProfilesOrm
 
 denodo_dsn = 'DenodoODBC'
 sql_server_dsn = 'DevOdbcSqlServer'
@@ -10,23 +10,36 @@ denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={Denod
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
+denodo_row_count_lambda = lambda database_name, schema_name, table_name: "SELECT COUNT(*) FROM {table_cat}.{table_name}".format(table_cat=database_name, table_name=table_name)
+
+sql_server_row_count_lambda = lambda database_name, schema_name, table_name: "SELECT COUNT(*) FROM {table_cat}.{table_schem}.{table_name}".format(table_cat=database_name, table_schem=schema_name, table_name=table_name)
+
+
 class OdbcConnection(object):
     def __init__(self, connection_lambda, server_name, database_name):
         self.server_name = server_name
         self.database_name = database_name
         self.connection_lambda = connection_lambda
         self.odbc_con_str = self.connection_lambda(self.server_name, self.database_name)
-        # self.row_count_query_format = row_count_query_format
-        # self.connection = pyodbc.connect(self.odbc_con_str)
+        # set by derived class
+        self.row_count_query_format = None
+        # set by derived class
+        self.server_type = None
+        self.sql_alchemy_session = None
         self.connection = None
 
     def connect(self):
         if self.connection is None:
             print('\tconnecting to: {}'.format(self.odbc_con_str))
-        try:
-            self.connection = pyodbc.connect(self.odbc_con_str)
-        except Exception as e:
-            print(e)
+            try:
+                self.connection = pyodbc.connect(self.odbc_con_str)
+            except Exception as e:
+                print(e)
+    
+    def set_log_session(self, alchemy_session):
+        self.sql_alchemy_session = alchemy_session
+        self.server_id = self.sql_alchemy_session.log_server_info(ServerName=self.server_name, ServerType=self.server_type)
+        self.database_id = self.sql_alchemy_session.log_database_info(ServerID=self.server_id, DatabaseName=self.database_name)
 
     def __del__(self):
         # print('disconnecting dsn name: {}'.format(self.server_name))
@@ -58,13 +71,13 @@ class OdbcConnection(object):
     def profile_database(self):
         self.connect()
         cur = self.connection.cursor()
-        kwargs = {"database_name":self.database_name, "schema_name":"dfs"}
-        # for table_name in self.tables():
+        row_count = cur.execute(sql).fetchone()
 
 
 class DenodoProfiler(OdbcConnection):
     def __init__(self, connection_lambda, server_name, database_name):
         super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name)
+        super(DenodoProfiler, self).server_type = 'Denodo'
 
     def databases(self):
         databases_query = 'SELECT DISTINCT DATABASE_NAME FROM CATALOG_VDP_METADATA_VIEWS();'
@@ -101,7 +114,7 @@ SELECT * FROM tempdb.dbo.{};"""
 
 
 if __name__ == '__main__':
-    
+    session = GenericProfilesOrm.GenericProfiles()
     denodo = DenodoProfiler(denodo_con_lambda, 'SPAPPDEN001', 'sandbox_paris')
     tabs = denodo.tables()
     for tab in tabs:
@@ -110,6 +123,8 @@ if __name__ == '__main__':
         cur = denodo.connection.cursor()
         row_count = cur.execute(sql).fetchone()
         print(row_count)
+    
+    denodo.set_log_session(session)
 
     dsdw = SqlServerProfiler(sql_server_con_lambda, 'STDBDECSUP02', 'DSDW')
     tabs = denodo.tables()
