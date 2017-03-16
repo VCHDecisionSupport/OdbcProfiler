@@ -119,8 +119,8 @@ def insert(session, orm_class, **kwargs):
 
 class GenericProfiles(object):
     def __init__(self):
-        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
         params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
+        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
         engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
         self.session = Session(bind=engine)
 
@@ -148,8 +148,8 @@ def main():
 
     # com = session.commit()
     # print(server_info.ServerInfoID)
-    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
     params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
+    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
     engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
     session = Session(bind=engine)
     # print(com)

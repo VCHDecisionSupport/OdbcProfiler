@@ -7,6 +7,7 @@ sql_server_dsn = 'DevOdbcSqlServer'
 logging_dsn = 'GenericProfiles'
 
 denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
+denodo_con_lambda = lambda server_name, database_name, port=9999: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT={};".format(server_name, database_name, port)
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
@@ -130,7 +131,8 @@ SELECT * FROM tempdb.dbo.{};"""
 
 if __name__ == '__main__':
     session = GenericProfilesOrm.GenericProfiles()
-    denodo = DenodoProfiler(denodo_con_lambda, 'SPAPPDEN001', 'sandbox_paris')
+    # denodo = DenodoProfiler('SPAPPDEN001', 'sandbox_paris')
+    denodo = DenodoProfiler('localhost', 'admin')
     tabs = denodo.tables()
     tab_fmt = lambda item: '"{}"."{}"'.format(item[0],item[2])
     tab_names = [tab_fmt(tab) for tab in tabs]
