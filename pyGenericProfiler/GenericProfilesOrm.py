@@ -132,7 +132,7 @@ class GenericProfiles(object):
 
     def log_viewtable_info(self, **kwargs):
         return insert_if_not_exists(self.session, ViewTableInfo, **kwargs)
-    
+
     def log_viewtable_profile(self, **kwargs):
         return insert(self.session, ViewTableProfile, **kwargs)
 
