@@ -28,8 +28,8 @@ class ServerInfo(Base):
     )
 
     ServerInfoID = Column(Integer, primary_key=True)
-    ServerName = Column(String(100, 'SQL_Latin1_General_CP1_CI_AS'))
-    ServerType = Column(String(100, 'SQL_Latin1_General_CP1_CI_AS'))
+    ServerName = Column(String(100))
+    ServerType = Column(String(100))
     
     def get_primary_key_value(self):
         return self.ServerInfoID
@@ -44,7 +44,7 @@ class DatabaseInfo(Base):
 
     DatabaseInfoID = Column(Integer, primary_key=True)
     ServerInfoID = Column(ForeignKey('ServerInfo.ServerInfoID'), nullable=False)
-    DatabaseName = Column(String(100, 'SQL_Latin1_General_CP1_CI_AS'), unique=True)
+    DatabaseName = Column(String(100), nullable=False)
 
     ServerInfo = relationship('ServerInfo')
     
@@ -62,8 +62,9 @@ class ViewTableInfo(Base):
 
     ViewTableInfoID = Column(Integer, primary_key=True)
     DatabaseInfoID = Column(ForeignKey('DatabaseInfo.DatabaseInfoID'), nullable=False)
-    PhysicalViewTableName = Column(String(100, 'SQL_Latin1_General_CP1_CI_AS'), nullable=False, unique=True)
-    LogicalViewTablePath = Column(String(100, 'SQL_Latin1_General_CP1_CI_AS'))
+    PhysicalViewTableName = Column(String(100), nullable=False, unique=True)
+    PrettyViewTableName = Column(String(100), nullable=False, unique=True)
+    LogicalViewTablePath = Column(String(100))
 
     DatabaseInfo = relationship('DatabaseInfo')
     
@@ -99,6 +100,50 @@ class ViewTableProfile(Base):
     #     self.ProfileDate = ProfileDate
     #     self.ViewTableRowCount = ViewTableRowCount
 
+class ColumnProfile(Base):
+    __tablename__ = 'ColumnProfile'
+    __table_args__ = (
+        Index('CI_ColumnProfile', 'ColumnProfileID', unique=True),
+    )
+
+    ColumnProfileID = Column(Integer, primary_key=True)
+    ViewTableProfileID = Column(ForeignKey('ViewTableProfile.ViewTableProfileID'), nullable=False)
+    ColumnName = Column(String(100))
+    ColumnDistinctRowCount = Column(Integer)
+
+    ViewTableProfile = relationship('ViewTableProfile')
+    
+    def get_primary_key_value(self):
+        return self.ColumnProfileID
+
+    # def __init__(self,ViewTableProfileID,ViewTableInfoID,ProfileDate,ViewTableRowCount):
+    #     self.ViewTableProfileID = ViewTableProfileID
+    #     self.ViewTableInfoID = ViewTableInfoID
+    #     self.ProfileDate = ProfileDate
+    #     self.ViewTableRowCount = ViewTableRowCount
+
+class ColumnHistogram(Base):
+    __tablename__ = 'ColumnHistogram'
+    __table_args__ = (
+        Index('CI_ColumnHistogram', 'ColumnHistogramID', unique=True),
+    )
+
+    ColumnHistogramID = Column(Integer, primary_key=True)
+    ColumnProfileID = Column(ForeignKey('ColumnProfile.ColumnProfileID'), nullable=False)
+    ColumnValueRowCount = Column(Integer)
+    ColumnValueString = Column(String(100))
+    
+    ColumnProfile = relationship('ColumnProfile')
+    
+    def get_primary_key_value(self):
+        return self.ColumnHistogramID
+
+    # def __init__(self,ViewTableProfileID,ViewTableInfoID,ProfileDate,ViewTableRowCount):
+    #     self.ViewTableProfileID = ViewTableProfileID
+    #     self.ViewTableInfoID = ViewTableInfoID
+    #     self.ProfileDate = ProfileDate
+    #     self.ViewTableRowCount = ViewTableRowCount
+
 def insert_if_not_exists(session, orm_class, **kwargs):
     print(kwargs)
     row = session.query(orm_class).filter_by(**kwargs).first()
@@ -120,9 +165,11 @@ def insert(session, orm_class, **kwargs):
 
 class GenericProfiles(object):
     def __init__(self):
-        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
-        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
-        engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
+        # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
+        # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+        # engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
+        params = urllib.parse.quote_plus("DRIVER={MySql ODBC 5.3 Unicode Driver};SERVER=localhost;DATABASE=generic_profiles;UID=sa;PWD=2and2is5")
+        engine = create_engine('mysql+pyodbc:///?odbc_connect='+params)
         self.session = Session(bind=engine)
 
     def log_server_info(self, **kwargs):
@@ -137,24 +184,26 @@ class GenericProfiles(object):
     def log_viewtable_profile(self, **kwargs):
         return insert(self.session, ViewTableProfile, **kwargs)
 
-def main():
-    # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
-    # engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
-    # session = Session(bind=engine)
-    # server_info = ServerInfo(ServerName='unknown_server_name6', ServerType='Denodo')
-    # # print(server_info.info)
-    # session.add(server_info)
-    # print(server_info.ServerInfoID)
-    # # print(server_info.info)
+    def log_column_profile(self, **kwargs):
+        return insert(self.session, ColumnProfile, **kwargs)
 
-    # com = session.commit()
-    # print(server_info.ServerInfoID)
-    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
-    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
-    engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
-    session = Session(bind=engine)
-    # print(com)
-    row = insert_if_not_exists(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
-    # print(row.__table_args__)
+ 
+def test():
+    profiler = GenericProfiles()
+    row = profiler.log_server_info(ServerName = 'test_GenericProfilesOrm', ServerType='test_GenericProfilesOrm')
+    # row = profiler.log_database_info(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
+    # row = profiler.log_viewtable_info(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
+    # row = profiler.log_viewtable_profile(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
+
+def deploy_sql_alchemy_model_database():
+    # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+    # engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
+    params = urllib.parse.quote_plus("DRIVER={MySql ODBC 5.3 Unicode Driver};SERVER=localhost;DATABASE=generic_profiles;UID=sa;PWD=2and2is5")
+    engine = create_engine('mysql+pyodbc:///?odbc_connect='+params)
+    print(engine)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    
+
 if __name__ == '__main__':
-    main()
+    deploy_sql_alchemy_model_database()
