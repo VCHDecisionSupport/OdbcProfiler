@@ -9,11 +9,8 @@
             "pythonPath": "${config.python.pythonPath}",
             "program": "${file}",
             "cwd": "${workspaceRoot}",
-<<<<<<< HEAD
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",

@@ -100,15 +100,16 @@ class ViewTableProfile(Base):
     #     self.ViewTableRowCount = ViewTableRowCount
 
 def insert_if_not_exists(session, orm_class, **kwargs):
+    print(kwargs)
     row = session.query(orm_class).filter_by(**kwargs).first()
     if row:
-        print(row.get_primary_key_value())
+        # print(row.get_primary_key_value())
         return row.get_primary_key_value()
     else:
         row = orm_class(**kwargs)
         session.add(row)
         session.commit()
-        print(row.get_primary_key_value())
+        # print(row.get_primary_key_value())
         return row.get_primary_key_value()
 
 def insert(session, orm_class, **kwargs):
@@ -119,8 +120,8 @@ def insert(session, orm_class, **kwargs):
 
 class GenericProfiles(object):
     def __init__(self):
-        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
         params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
         engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
         self.session = Session(bind=engine)
 
@@ -148,8 +149,8 @@ def main():
 
     # com = session.commit()
     # print(server_info.ServerInfoID)
-    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
     params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
     engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
     session = Session(bind=engine)
     # print(com)

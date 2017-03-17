@@ -6,8 +6,8 @@ denodo_dsn = 'DenodoODBC'
 sql_server_dsn = 'DevOdbcSqlServer'
 logging_dsn = 'GenericProfiles'
 
-denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
 denodo_con_lambda = lambda server_name, database_name, port=9999: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT={};".format(server_name, database_name, port)
+denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
@@ -40,7 +40,7 @@ class OdbcConnection(object):
                 self.connection = pyodbc.connect(self.odbc_con_str)
             except Exception as e:
                 print(e)
-
+                raise e
     def set_log_session(self, alchemy_session):
         self.sql_alchemy_session = alchemy_session
         self.server_id = self.sql_alchemy_session.log_server_info(ServerName=self.server_name, ServerType=self.server_type)
@@ -49,6 +49,8 @@ class OdbcConnection(object):
 
     def __del__(self):
         # print('disconnecting dsn name: {}'.format(self.server_name))
+        print(self)
+        print(self.__dict__())
         if self.connection is not None:
             print('committing changes to: {}'.format(
                 self.server_name))
@@ -65,7 +67,11 @@ class OdbcConnection(object):
     def log_tables_info(self):
         """asdf"""
         # physical_names = map(        )
-        self.sql_alchemy_session.log_table_info(DatabaseID=self.database_id, PhysicalViewTableName=self.database_name, TableName=self.database_name)
+        self.connect()
+        tab_fmt = lambda item: '"{}"."{}"'.format(item[0],item[2])
+        tab_names = [tab_fmt(tab) for tab in self.tables()]
+        for table in tab_names:
+            self.sql_alchemy_session.log_viewtable_info(DatabaseInfoID=self.database_id, PhysicalViewTableName=table)
 
     def columns(self):
         """returns pyodbc.cursor of all columns"""
@@ -102,9 +108,9 @@ class DenodoProfiler(OdbcConnection):
 class SqlServerProfiler(OdbcConnection):
     def __init__(self, server_name, database_name):
         connection_lambda = sql_server_con_lambda
-        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name)
         self.server_type = 'Sql Server'
         self.physical_name_lambda = sql_server_physical_view_table_name_lambda
+        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name)
 
     def databases(self):
         guid = uuid.uuid1()
@@ -131,29 +137,19 @@ SELECT * FROM tempdb.dbo.{};"""
 
 if __name__ == '__main__':
     session = GenericProfilesOrm.GenericProfiles()
-    # denodo = DenodoProfiler('SPAPPDEN001', 'sandbox_paris')
-    denodo = DenodoProfiler('localhost', 'admin')
-    tabs = denodo.tables()
-    tab_fmt = lambda item: '"{}"."{}"'.format(item[0],item[2])
-    tab_names = [tab_fmt(tab) for tab in tabs]
-    print(tab_names)
+    denodo = DenodoProfiler('SPAPPDEN001', 'sandbox_paris')
+    denodo.set_log_session(session)
+    denodo.log_tables_info()
+    exit
+
+    # dsdw = SqlServerProfiler(sql_server_con_lambda, 'STDBDECSUP02', 'DSDW')
+    # tabs = denodo.tables()
     # for tab in tabs:
     #     print(tab)
-    #     sql = "SELECT COUNT(*) FROM {table_cat}.{table_name}".format(table_cat=tab.table_cat, table_name=tab.table_name)
+    #     sql = "SELECT COUNT(*) FROM {table_cat}.{table_schem}.{table_name}".format(table_cat=tab.table_cat, table_schem=tab.table_schem, table_name=tab.table_name)
     #     cur = denodo.connection.cursor()
     #     row_count = cur.execute(sql).fetchone()
     #     print(row_count)
-    denodo.set_log_session(session)
-    exit
-
-    dsdw = SqlServerProfiler(sql_server_con_lambda, 'STDBDECSUP02', 'DSDW')
-    tabs = denodo.tables()
-    for tab in tabs:
-        print(tab)
-        sql = "SELECT COUNT(*) FROM {table_cat}.{table_schem}.{table_name}".format(table_cat=tab.table_cat, table_schem=tab.table_schem, table_name=tab.table_name)
-        cur = denodo.connection.cursor()
-        row_count = cur.execute(sql).fetchone()
-        print(row_count)
 
 
 
