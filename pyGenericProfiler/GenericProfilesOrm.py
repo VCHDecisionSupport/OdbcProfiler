@@ -21,128 +21,128 @@ metadata = Base.metadata
 
 # """
 
-class ServerInfo(Base):
-    __tablename__ = 'ServerInfo'
+class server_info(Base):
+    __tablename__ = 'server_info'
     __table_args__ = (
-        Index('CI_ServerInfo', 'ServerName', 'ServerType', unique=True),
+        Index('CI_server_info', 'server_name', 'server_type', unique=True),
     )
 
-    ServerInfoID = Column(Integer, primary_key=True)
-    ServerName = Column(String(100))
-    ServerType = Column(String(100))
+    server_info_id = Column(Integer, primary_key=True)
+    server_name = Column(String(100))
+    server_type = Column(String(100))
     
     def get_primary_key_value(self):
-        return self.ServerInfoID
+        return self.server_info_id
 
-    # def __init__(self, ServerInfoID, ServerName, ServerType):
-    #     self.ServerInfoID = ServerInfoID
-    #     self.ServerName = ServerName
-    #     self.ServerType = ServerType
+    # def __init__(self, server_info_id, server_name, server_type):
+    #     self.server_info_id = server_info_id
+    #     self.server_name = server_name
+    #     self.server_type = server_type
 
-class DatabaseInfo(Base):
-    __tablename__ = 'DatabaseInfo'
+class database_info(Base):
+    __tablename__ = 'database_info'
 
-    DatabaseInfoID = Column(Integer, primary_key=True)
-    ServerInfoID = Column(ForeignKey('ServerInfo.ServerInfoID'), nullable=False)
-    DatabaseName = Column(String(100), nullable=False)
+    database_info_id = Column(Integer, primary_key=True)
+    server_info_id = Column(ForeignKey('server_info.server_info_id'), nullable=False)
+    database_name = Column(String(100), nullable=False)
 
-    ServerInfo = relationship('ServerInfo')
+    server_info = relationship('server_info')
     
     def get_primary_key_value(self):
-        return self.DatabaseInfoID
+        return self.database_info_id
 
-    # def __init__(self, DatabaseInfoID, ServerInfoID, DatabaseName):
-    #     self.DatabaseInfoID = DatabaseInfoID
-    #     self.ServerInfoID = ServerInfoID
-    #     self.DatabaseName = DatabaseName
+    # def __init__(self, database_info_id, server_info_id, database_name):
+    #     self.database_info_id = database_info_id
+    #     self.server_info_id = server_info_id
+    #     self.database_name = database_name
 
 
-class ViewTableInfo(Base):
-    __tablename__ = 'ViewTableInfo'
+class view_table_info(Base):
+    __tablename__ = 'view_table_info'
 
-    ViewTableInfoID = Column(Integer, primary_key=True)
-    DatabaseInfoID = Column(ForeignKey('DatabaseInfo.DatabaseInfoID'), nullable=False)
-    PhysicalViewTableName = Column(String(100), nullable=False, unique=True)
-    PrettyViewTableName = Column(String(100), nullable=False, unique=True)
-    LogicalViewTablePath = Column(String(100))
+    view_table_info_id = Column(Integer, primary_key=True)
+    database_info_id = Column(ForeignKey('database_info.database_info_id'), nullable=False)
+    ansi_view_table_name = Column(String(100), nullable=False, unique=True)
+    pretty_view_table_name = Column(String(100), nullable=False, unique=True)
+    logical_path = Column(String(100))
 
-    DatabaseInfo = relationship('DatabaseInfo')
+    database_info = relationship('database_info')
     
     def get_primary_key_value(self):
-        return self.ViewTableInfoID
+        return self.view_table_info_id
     
-    # def __init__(self,ViewTableInfoID,DatabaseInfoID,PhysicalViewTableName,LogicalViewTablePath):
-    #     self.ViewTableInfoID = ViewTableInfoID
-    #     self.DatabaseInfoID = DatabaseInfoID
-    #     self.PhysicalViewTableName = PhysicalViewTableName
-    #     self.LogicalViewTablePath = LogicalViewTablePath
+    # def __init__(self,view_table_info_id,database_info_id,ansi_view_table_name,logical_path):
+    #     self.view_table_info_id = view_table_info_id
+    #     self.database_info_id = database_info_id
+    #     self.ansi_view_table_name = ansi_view_table_name
+    #     self.logical_path = logical_path
 
 
-class ViewTableProfile(Base):
-    __tablename__ = 'ViewTableProfile'
+class view_table_profile(Base):
+    __tablename__ = 'view_table_profile'
     __table_args__ = (
-        Index('CI_ViewTableProfile', 'ViewTableProfileID', 'ProfileDate', unique=True),
+        Index('CI_view_table_profile_id', 'view_table_profile_id', 'profile_date', unique=True),
     )
 
-    ViewTableProfileID = Column(Integer, primary_key=True)
-    ViewTableInfoID = Column(ForeignKey('ViewTableInfo.ViewTableInfoID'), nullable=False)
-    ProfileDate = Column(DateTime)
-    ViewTableRowCount = Column(Integer)
+    view_table_profile_id = Column(Integer, primary_key=True)
+    view_table_info_id = Column(ForeignKey('view_table_info.view_table_info_id'), nullable=False)
+    profile_date = Column(DateTime)
+    view_table_row_count = Column(Integer)
 
-    ViewTableInfo = relationship('ViewTableInfo')
+    view_table_info = relationship('view_table_info')
     
     def get_primary_key_value(self):
-        return self.ViewTableProfileID
+        return self.view_table_profile_id
 
-    # def __init__(self,ViewTableProfileID,ViewTableInfoID,ProfileDate,ViewTableRowCount):
-    #     self.ViewTableProfileID = ViewTableProfileID
-    #     self.ViewTableInfoID = ViewTableInfoID
-    #     self.ProfileDate = ProfileDate
-    #     self.ViewTableRowCount = ViewTableRowCount
+    # def __init__(self,view_table_profile_id,view_table_info_id,profile_date,view_table_row_count):
+    #     self.view_table_profile_id = view_table_profile_id
+    #     self.view_table_info_id = view_table_info_id
+    #     self.profile_date = profile_date
+    #     self.view_table_row_count = view_table_row_count
 
-class ColumnProfile(Base):
-    __tablename__ = 'ColumnProfile'
+class column_profile(Base):
+    __tablename__ = 'column_profile'
     __table_args__ = (
-        Index('CI_ColumnProfile', 'ColumnProfileID', unique=True),
+        Index('CI_column_profile', 'column_profile_id', unique=True),
     )
 
-    ColumnProfileID = Column(Integer, primary_key=True)
-    ViewTableProfileID = Column(ForeignKey('ViewTableProfile.ViewTableProfileID'), nullable=False)
-    ColumnName = Column(String(100))
-    ColumnDistinctRowCount = Column(Integer)
+    column_profile_id = Column(Integer, primary_key=True)
+    view_table_profile_id = Column(ForeignKey('view_table_profile.view_table_profile_id'), nullable=False)
+    column_name = Column(String(100))
+    column_distinct_count = Column(Integer)
 
-    ViewTableProfile = relationship('ViewTableProfile')
+    view_table_profile = relationship('view_table_profile')
     
     def get_primary_key_value(self):
-        return self.ColumnProfileID
+        return self.column_profile_id
 
-    # def __init__(self,ViewTableProfileID,ViewTableInfoID,ProfileDate,ViewTableRowCount):
-    #     self.ViewTableProfileID = ViewTableProfileID
-    #     self.ViewTableInfoID = ViewTableInfoID
-    #     self.ProfileDate = ProfileDate
-    #     self.ViewTableRowCount = ViewTableRowCount
+    # def __init__(self,view_table_profile_id,view_table_info_id,profile_date,view_table_row_count):
+    #     self.view_table_profile_id = view_table_profile_id
+    #     self.view_table_info_id = view_table_info_id
+    #     self.profile_date = profile_date
+    #     self.view_table_row_count = view_table_row_count
 
-class ColumnHistogram(Base):
-    __tablename__ = 'ColumnHistogram'
+class column_histogram(Base):
+    __tablename__ = 'column_histogram'
     __table_args__ = (
-        Index('CI_ColumnHistogram', 'ColumnHistogramID', unique=True),
+        Index('CI_column_histogram', 'column_histogram_id', unique=True),
     )
 
-    ColumnHistogramID = Column(Integer, primary_key=True)
-    ColumnProfileID = Column(ForeignKey('ColumnProfile.ColumnProfileID'), nullable=False)
-    ColumnValueRowCount = Column(Integer)
-    ColumnValueString = Column(String(100))
+    column_histogram_id = Column(Integer, primary_key=True)
+    column_profile_id = Column(ForeignKey('column_profile.column_profile_id'), nullable=False)
+    column_value_count = Column(Integer)
+    column_value_string = Column(String(100))
     
-    ColumnProfile = relationship('ColumnProfile')
+    column_profile = relationship('column_profile')
     
     def get_primary_key_value(self):
-        return self.ColumnHistogramID
+        return self.column_histogram_id
 
-    # def __init__(self,ViewTableProfileID,ViewTableInfoID,ProfileDate,ViewTableRowCount):
-    #     self.ViewTableProfileID = ViewTableProfileID
-    #     self.ViewTableInfoID = ViewTableInfoID
-    #     self.ProfileDate = ProfileDate
-    #     self.ViewTableRowCount = ViewTableRowCount
+    # def __init__(self,view_table_profile_id,view_table_info_id,profile_date,view_table_row_count):
+    #     self.view_table_profile_id = view_table_profile_id
+    #     self.view_table_info_id = view_table_info_id
+    #     self.profile_date = profile_date
+    #     self.view_table_row_count = view_table_row_count
 
 def insert_if_not_exists(session, orm_class, **kwargs):
     print(kwargs)
@@ -158,6 +158,7 @@ def insert_if_not_exists(session, orm_class, **kwargs):
         return row.get_primary_key_value()
 
 def insert(session, orm_class, **kwargs):
+    print(kwargs)
     row = orm_class(**kwargs)
     session.add(row)
     session.commit()
@@ -173,27 +174,27 @@ class GenericProfiles(object):
         self.session = Session(bind=engine)
 
     def log_server_info(self, **kwargs):
-        return insert_if_not_exists(self.session, ServerInfo, **kwargs)
+        return insert_if_not_exists(self.session, server_info, **kwargs)
 
     def log_database_info(self, **kwargs):
-        return insert_if_not_exists(self.session, DatabaseInfo, **kwargs)
+        return insert_if_not_exists(self.session, database_info, **kwargs)
 
     def log_viewtable_info(self, **kwargs):
-        return insert_if_not_exists(self.session, ViewTableInfo, **kwargs)
+        return insert_if_not_exists(self.session, view_table_info, **kwargs)
 
     def log_viewtable_profile(self, **kwargs):
-        return insert(self.session, ViewTableProfile, **kwargs)
+        return insert(self.session, view_table_profile, **kwargs)
 
     def log_column_profile(self, **kwargs):
-        return insert(self.session, ColumnProfile, **kwargs)
+        return insert(self.session, column_profile, **kwargs)
 
  
 def test():
     profiler = GenericProfiles()
-    row = profiler.log_server_info(ServerName = 'test_GenericProfilesOrm', ServerType='test_GenericProfilesOrm')
-    # row = profiler.log_database_info(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
-    # row = profiler.log_viewtable_info(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
-    # row = profiler.log_viewtable_profile(session, ServerInfo, ServerName = 'unknown_server_name11', ServerType='Denodo')
+    row = profiler.log_server_info(server_name = 'test_GenericProfilesOrm', server_type='test_GenericProfilesOrm')
+    # row = profiler.log_database_info(session, server_info, server_name = 'unknown_server_name11', server_type='Denodo')
+    # row = profiler.log_viewtable_info(session, server_info, server_name = 'unknown_server_name11', server_type='Denodo')
+    # row = profiler.log_viewtable_profile(session, server_info, server_name = 'unknown_server_name11', server_type='Denodo')
 
 def deploy_sql_alchemy_model_database():
     # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
