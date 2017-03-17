@@ -74,25 +74,27 @@ WSGI_APPLICATION = 'GenericProfilesWeb.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'SERVER': 'MySql57',
-        'NAME': 'GenericProfiles',
-        'USER': 'gcrowell',
-        'PASSWORD':'2and2is5',
-        # 'TEST': {
-        #     'NAME': 'mytestdatabase',
-        # },
-    }
-}
-
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#         'ENGINE': 'django_pyodbc',
+#         'DSN': 'PC_Sql',
+#         # 'SERVER': 'localhost',
+#         'NAME': 'GenericProfiles1',
+#         # 'driver_supports_utf8': True,
+#         # 'USER': 'sa',
+#         # 'PASSWORD':'2and2is5',
+#         # 'TEST': {
+#         #     'NAME': 'mytestdatabase',
+#         # },
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
+}
 # DATABASES = {
 #    'default': {
 #     #    'ENGINE': "sql_server.pyodbc",
