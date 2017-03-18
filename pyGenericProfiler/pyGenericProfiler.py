@@ -6,8 +6,6 @@ from collections import *
 
 
 denodo_dsn = 'PC_Denodo'
-sql_server_dsn = 'DevOdbcSqlServer'
-logging_dsn = 'GenericProfiles'
 
 denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
 denodo_con_lambda = lambda server_name, database_name, port=9999: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT={};".format(server_name, database_name, port)
@@ -15,14 +13,6 @@ denodo_con_lambda = lambda server_name, database_name, port=9999: "DSN={}".forma
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
-# denodo_row_count_lambda = lambda database_name, schema_name, table_name: "SELECT COUNT(*) FROM {table_cat}.{table_name}".format(table_cat=database_name, table_name=table_name)
-# sql_server_row_count_lambda = lambda database_name, schema_name, table_name: "SELECT COUNT(*) FROM {table_cat}.{table_schem}.{table_name}".format(table_cat=database_name, table_schem=schema_name, table_name=table_name)
-# denodo_physical_view_table_name_lambda = lambda database_name, schema_name, table_name: '"{table_cat}"."{table_name}"'.format(table_cat=database_name, table_name=table_name)
-# sql_server_physical_view_table_name_lambda = lambda database_name, schema_name, table_name: '"{table_cat}"."{table_schem}"."{table_name}"'.format(table_cat=database_name, table_schem=schema_name, table_name=table_name)
-
-def odbc_tables_2_denodo_selectable_name(odbc_tables_meta_row):
-    """converts results from a standard ODBC `SQLTables` meta data query to Denodo friendly (ie. selectable) object names"""
-    return '"{}"."{}"'.format(odbc_tables_meta_row[0], odbc_tables_meta_row[2])
 
 odbc_denodo_ansi_table_format = '"{table_cat}"."{table_name}"'
 # see https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function#comments
@@ -32,16 +22,6 @@ odbc_denodo_ansi_column_format = '"{table_qualifier}"."{table_name}"."{column_na
 def odbc_tables_2_sql_server_selectable_name(odbc_tables_meta_row):
     """converts results from a standard ODBC `SQLTables` meta data query to Denodo friendly (ie. selectable) object names"""
     return '"{}"."{}"."{}"'.format(odbc_tables_meta_row[0], odbc_tables_meta_row[1], odbc_tables_meta_row[2])
-
-def odbc_columns_2_denodo_selectable_name(odbc_tables_meta_row):
-    """converts results from a standard ODBC `SQLColumns` meta data query to Denodo friendly (ie. selectable) object names
-    https://github.com/mkleehammer/pyodbc/wiki/Cursor#columnstablenone-catalognone-schemanone-columnnone"""
-    return '"{}"."{}"."{}"'.format(odbc_tables_meta_row[0], odbc_tables_meta_row[2], odbc_tables_meta_row[3])
-
-def odbc_columns_2_sql_server_selectable_name(odbc_tables_meta_row):
-    """converts results from a standard ODBC `SQLColumns` meta data query to Denodo friendly (ie. selectable) object names
-    https://github.com/mkleehammer/pyodbc/wiki/Cursor#columnstablenone-catalognone-schemanone-columnnone"""
-    return '"{}"."{}"."{}"."{}"'.format(odbc_tables_meta_row[0], odbc_tables_meta_row[1], odbc_tables_meta_row[2], odbc_tables_meta_row[3])
 
 """takes pyodbc Cursor object returns list of column names of cursor's result"""
 cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
@@ -70,10 +50,10 @@ class OdbcConnection(object):
                 print(e)
                 raise e
 
-    def set_log_session(self, alchemy_session):
-        self.sql_alchemy_session = alchemy_session
-        self.server_info_id = self.sql_alchemy_session.log_server_info(server_name=self.server_name, server_type=self.server_type)
-        self.database_info_id = self.sql_alchemy_session.log_database_info(server_info_id=self.server_info_id, database_name=self.database_name)
+    # def set_log_session(self, alchemy_session):
+        # self.sql_alchemy_session = alchemy_session
+        # self.server_info_id = self.sql_alchemy_session.log_server_info(server_name=self.server_name, server_type=self.server_type)
+        # self.database_info_id = self.sql_alchemy_session.log_database_info(server_info_id=self.server_info_id, database_name=self.database_name)
 
     def __del__(self):
         # print('disconnecting dsn name: {}'.format(self.server_name))
@@ -104,13 +84,13 @@ class OdbcConnection(object):
             for key, meta_dict in self.table_meta_dict.items():
                 self.table_meta_dict[key]['ansi_view_table_name'] = self.ansi_table_format.format(**self.table_meta_dict[key])
 
-    def log_tables_info(self):
-        """populate table_info table"""
-        self.connect()
-        self.create_tables_meta_dict()
-        for key, meta_dict in self.table_meta_dict.items():
-            view_table_info_id = self.sql_alchemy_session.log_viewtable_info(database_info_id=self.database_info_id, ansi_view_table_name=self.table_meta_dict[key]['ansi_view_table_name'], pretty_view_table_name=key)
-            self.table_meta_dict[key]['view_table_info_id'] = view_table_info_id
+    # def log_tables_info(self):
+    #     """populate table_info table"""
+    #     self.connect()
+    #     self.create_tables_meta_dict()
+    #     for key, meta_dict in self.table_meta_dict.items():
+    #         view_table_info_id = self.sql_alchemy_session.log_viewtable_info(database_info_id=self.database_info_id, ansi_view_table_name=self.table_meta_dict[key]['ansi_view_table_name'], pretty_view_table_name=key)
+    #         self.table_meta_dict[key]['view_table_info_id'] = view_table_info_id
     
     def columns(self,**kwargs):
         """returns pyodbc.cursor of all columns in current database
@@ -120,15 +100,15 @@ class OdbcConnection(object):
         cur = self.connection.cursor()
         return cur.columns(**kwargs)
 
-    def create_columns_meta_dict(self, **kwargs):
+    def create_columns_meta_dict(self):
         """column version of create_tables_meta_dict()"""
         """forwards kwargs param to self.tables(); returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
         """takes pyodbc Cursor object returns list of column names of cursor's result"""
         cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
-        temp_tables_cur = self.columns(**kwargs)
-        table_meta_fields = list(cursor_column_names(temp_tables_cur))
-        table_meta_key = lambda tables_record: tables_record[3]
-        self.colum_meta_dict = OrderedDict([(table_meta_key(table_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
+        temp_tables_cur = self.columns()
+        column_meta_fields = list(cursor_column_names(temp_columns_cur))
+        column_meta_key = lambda columns_record: columns_record[3]
+        self.colum_meta_dict = OrderedDict([(column_meta_key(column_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
         for key, meta_dict in self.colum_meta_dict.items():
             print(self.colum_meta_dict[key])
             self.colum_meta_dict[key]['ansi_column_name'] = self.ansi_column_format.format(**self.colum_meta_dict[key])
@@ -157,19 +137,19 @@ class OdbcConnection(object):
     def switch_database(self, database_name):
         return self.__class__(self.connection_lambda, self.server_name, database_name)
 
-    def profile_database(self):
-        self.connect()
-        self.log_tables_info()
-        cur = self.connection.cursor()
-        for name, meta in self.table_meta_dict.items():
-            table_profile_sql = "SELECT COUNT(*) FROM {};".format(meta['ansi_view_table_name'])
-            # print('{}'.format(selectable_name))
-            row_count = cur.execute(table_profile_sql).fetchone()[0]
-            # print('\t\t{}: row_count: {}'.format(selectable_name, row_count))
-            view_table_profile_id = self.sql_alchemy_session.log_viewtable_profile(view_table_info_id=meta['view_table_info_id'], view_table_row_count=row_count, profile_date=datetime.datetime.now())
-            self.table_meta_dict[name]['view_table_profile_id'] = view_table_profile_id
-            if self.profile_columns:
-                pass
+    # def profile_database(self):
+    #     self.connect()
+    #     self.log_tables_info()
+    #     cur = self.connection.cursor()
+    #     for name, meta in self.table_meta_dict.items():
+    #         table_profile_sql = "SELECT COUNT(*) FROM {};".format(meta['ansi_view_table_name'])
+    #         # print('{}'.format(selectable_name))
+    #         row_count = cur.execute(table_profile_sql).fetchone()[0]
+    #         # print('\t\t{}: row_count: {}'.format(selectable_name, row_count))
+    #         view_table_profile_id = self.sql_alchemy_session.log_viewtable_profile(view_table_info_id=meta['view_table_info_id'], view_table_row_count=row_count, profile_date=datetime.datetime.now())
+    #         self.table_meta_dict[name]['view_table_profile_id'] = view_table_profile_id
+    #         if self.profile_columns:
+    #             pass
             #     for column_meta in self.columns(table=selectable_name):
             #         column_select = self.odbc_columns_2_selectable_name(column_meta)
             #         column_profile_sql = "SELECT DISTINCT {} FROM {};".format(column_select, selectable_name)
