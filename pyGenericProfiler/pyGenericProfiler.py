@@ -17,14 +17,18 @@ sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 
 odbc_denodo_ansi_table_format = '"{table_cat}"."{table_name}"'
 # see https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function#comments
 odbc_denodo_ansi_column_format = '"{table_cat}"."{table_name}"."{column_name}"'
-odbc_denodo_ansi_column_format = '"{table_qualifier}"."{table_name}"."{column_name}"'
+odbc_denodo_ansi_column_format = '"{table_name}"."{column_name}"'
 
 def odbc_tables_2_sql_server_selectable_name(odbc_tables_meta_row):
     """converts results from a standard ODBC `SQLTables` meta data query to Denodo friendly (ie. selectable) object names"""
     return '"{}"."{}"."{}"'.format(odbc_tables_meta_row[0], odbc_tables_meta_row[1], odbc_tables_meta_row[2])
 
-"""takes pyodbc Cursor object returns list of column names of cursor's result"""
+"""takes pyodbc Cursor object returns list of columns names of cursor's result"""
 cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
+"""takes pyodbc.tables (ie. SQLTables) record and returns table_name"""
+table_meta_key = lambda tables_record: tables_record[2]
+"""takes pyodbc.columns (ie. SQLColumns) record and returns column_name"""
+column_meta_key = lambda columns_record: columns_record[3]
 
 class OdbcConnection(object):
     def __init__(self, connection_lambda, server_name, database_name, server_type, ansi_table_format, ansi_column_format):
@@ -46,6 +50,8 @@ class OdbcConnection(object):
             print('\tconnecting to: {}'.format(self.odbc_con_str))
             try:
                 self.connection = pyodbc.connect(self.odbc_con_str)
+                self.odbc_version = self.connection.getinfo(pyodbc.SQL_DRIVER_ODBC_VER)
+                print('\t\tconnected (ODBC version: {})'.format(self.odbc_version))
             except Exception as e:
                 print(e)
                 raise e
@@ -79,10 +85,10 @@ class OdbcConnection(object):
             temp_tables_cur = self.tables()
             cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
             table_meta_fields = list(cursor_column_names(temp_tables_cur))
-            table_meta_key = lambda tables_record: tables_record[2]
             self.table_meta_dict = OrderedDict([(table_meta_key(table_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
             for key, meta_dict in self.table_meta_dict.items():
                 self.table_meta_dict[key]['ansi_view_table_name'] = self.ansi_table_format.format(**self.table_meta_dict[key])
+                self.table_meta_dict[key]['view_table_row_count_sql'] = 'SELECT COUNT(*) AS "view_table_row_count" FROM {};'.format(self.table_meta_dict[key]['ansi_view_table_name'])
 
     # def log_tables_info(self):
     #     """populate table_info table"""
@@ -105,12 +111,11 @@ class OdbcConnection(object):
         """forwards kwargs param to self.tables(); returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
         """takes pyodbc Cursor object returns list of column names of cursor's result"""
         cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
-        temp_tables_cur = self.columns()
+        temp_columns_cur = self.columns()
         column_meta_fields = list(cursor_column_names(temp_columns_cur))
-        column_meta_key = lambda columns_record: columns_record[3]
-        self.colum_meta_dict = OrderedDict([(column_meta_key(column_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
+        
+        self.colum_meta_dict = OrderedDict([(column_meta_key(column_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(column_meta_fields,column_meta)])) for column_meta in temp_columns_cur])
         for key, meta_dict in self.colum_meta_dict.items():
-            print(self.colum_meta_dict[key])
             self.colum_meta_dict[key]['ansi_column_name'] = self.ansi_column_format.format(**self.colum_meta_dict[key])
 
     def get_full_meta_dict(self):
@@ -122,17 +127,24 @@ class OdbcConnection(object):
             self.create_columns_meta_dict()
             self.create_tables_meta_dict()
             col = self.colum_meta_dict
-            tab = self.table_meta_dict
-            for key, meta in col.items():
-                if 'columns' not in tab[meta['table_name']]:
-                    tab[meta['table_name']]['columns'] = {}
-                tab[meta['table_name']]['columns'][key] = meta
-            self.full_meta_dict = tab
+            temp_full_meta_dict = self.table_meta_dict
+            # loop over each column in column_meta_dict and add it to full_meta_dict
+            for column_name, column_meta in col.items():
+                # add 'columns' as new items into table_meta_dict beside other table level meta data items
+                if 'columns' not in temp_full_meta_dict[column_meta['table_name']]:
+                    temp_full_meta_dict[column_meta['table_name']]['columns'] = {}
+                # create sql code for column distinct count; and add sql code to column_meta_dict (which is then added to full_meta_dict)
+                ansi_view_table_name = temp_full_meta_dict[column_meta['table_name']]['ansi_view_table_name']
+                ansi_column_name = column_meta['ansi_column_name']
+                column_distinct_count_sql = 'SELECT COUNT(DISTINCT {}) AS "column_distinct_count" FROM {};'.format(ansi_column_name, ansi_view_table_name)
+                column_meta['column_distinct_count_sql'] = column_distinct_count_sql
+                # add column meta data
+                temp_full_meta_dict[column_meta['table_name']]['columns'][column_name] = column_meta
+            self.full_meta_dict = temp_full_meta_dict
         return self.full_meta_dict
 
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
-
 
     def switch_database(self, database_name):
         return self.__class__(self.connection_lambda, self.server_name, database_name)
@@ -214,23 +226,25 @@ def print_print(in_dict, tab_count=0):
 if __name__ == '__main__':
     session = GenericProfilesOrm.GenericProfiles()
     denodo = DenodoProfiler('PC', 'wide_world_importers')
-    
-    denodo.set_log_session(session)
-    denodo.log_tables_info()
-    denodo.profile_database()
-    tab = denodo.table_meta_dict
-    denodo.create_columns_meta_dict()
-    col = denodo.colum_meta_dict
+    data_model_meta_dict = denodo.get_full_meta_dict()
+    print_print(data_model_meta_dict)
+    exit
+    # denodo.set_log_session(session)
+    # denodo.log_tables_info()
+    # denodo.profile_database()
+    # tab = denodo.table_meta_dict
+    # denodo.create_columns_meta_dict()
+    # col = denodo.colum_meta_dict
 
-    print_dict_dict(tab)
-    print_dict_dict(col)
+    # print_dict_dict(tab)
+    # print_dict_dict(col)
 
-    for key, meta in col.items():
-        if 'columns' not in tab[meta['table_name']]:
-            tab[meta['table_name']]['columns'] = {}
-        tab[meta['table_name']]['columns'][key] = meta
+    # for key, meta in col.items():
+    #     if 'columns' not in tab[meta['table_name']]:
+    #         tab[meta['table_name']]['columns'] = {}
+    #     tab[meta['table_name']]['columns'][key] = meta
     
-    print_print(tab)
+    # print_print(tab)
     
     # for table_name, table_meta in tab.items():
     #     print('table_name = {}'.format(table_name))
