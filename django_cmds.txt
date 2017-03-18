@@ -1,0 +1,24 @@
+cd C:\Users\user\Source\Repos\GenericProfiles
+django-admin startproject ProfilesPortal
+cd ProfilesPortal
+python manage.py runserver 
+
+python manage.py startapp SqlProfiles
+
+INSTALLED_APPS = [
+    'SqlProfiles.apps.SqlprofilesConfig',
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ProfilesPortal',
+        'USER': 'sa',
+        'PASSWORD': '2and2is5',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
+python manage.py makemigrations
+
+python manage.py migrate

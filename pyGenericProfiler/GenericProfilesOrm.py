@@ -24,7 +24,7 @@ metadata = Base.metadata
 class server_info(Base):
     __tablename__ = 'server_info'
     __table_args__ = (
-        Index('CI_server_info', 'server_name', 'server_type', unique=True),
+        Index('ix_server_info', 'server_name', 'server_type', unique=True),
     )
 
     server_info_id = Column(Integer, primary_key=True)
@@ -81,7 +81,7 @@ class view_table_info(Base):
 class view_table_profile(Base):
     __tablename__ = 'view_table_profile'
     __table_args__ = (
-        Index('CI_view_table_profile_id', 'view_table_profile_id', 'profile_date', unique=True),
+        Index('ix_view_table_profile_id', 'view_table_profile_id', 'profile_date', unique=True),
     )
 
     view_table_profile_id = Column(Integer, primary_key=True)
@@ -100,18 +100,33 @@ class view_table_profile(Base):
     #     self.profile_date = profile_date
     #     self.view_table_row_count = view_table_row_count
 
+class column_info(Base):
+    __tablename__ = 'column_info'
+    __table_args__ = (
+        Index('ix_column_info', 'column_info_id', unique=True),
+    )
+
+    column_info_id = Column(Integer, primary_key=True)
+    view_table_profile_id = Column(ForeignKey('view_table_profile.view_table_profile_id'), nullable=False)
+    column_name = Column(String(100))
+
+    column_info = relationship('column_info')
+    
+    def get_primary_key_value(self):
+        return self.column_info_id
+
+
 class column_profile(Base):
     __tablename__ = 'column_profile'
     __table_args__ = (
-        Index('CI_column_profile', 'column_profile_id', unique=True),
+        Index('ix_column_profile', 'column_profile_id', unique=True),
     )
 
     column_profile_id = Column(Integer, primary_key=True)
-    view_table_profile_id = Column(ForeignKey('view_table_profile.view_table_profile_id'), nullable=False)
-    column_name = Column(String(100))
+    column_info_id = Column(ForeignKey('column_info.column_info_id'), nullable=False)
     column_distinct_count = Column(Integer)
 
-    view_table_profile = relationship('view_table_profile')
+    column_info = relationship('column_info')
     
     def get_primary_key_value(self):
         return self.column_profile_id
@@ -125,7 +140,7 @@ class column_profile(Base):
 class column_histogram(Base):
     __tablename__ = 'column_histogram'
     __table_args__ = (
-        Index('CI_column_histogram', 'column_histogram_id', unique=True),
+        Index('ix_column_histogram', 'column_histogram_id', unique=True),
     )
 
     column_histogram_id = Column(Integer, primary_key=True)

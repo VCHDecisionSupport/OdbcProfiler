@@ -52,12 +52,6 @@ class OdbcConnection(object):
         self.database_name = database_name
         self.connection_lambda = connection_lambda
         self.odbc_con_str = self.connection_lambda(self.server_name, self.database_name)
-        # # set by derived class
-        # self.row_count_query_format = None
-        # set by derived class
-        # self.odbc_tables_2_selectable_name = odbc_tables_2_selectable_name
-        # self.odbc_columns_2_selectable_name = odbc_columns_2_selectable_name
-        # set by derived class
         self.server_type = server_type
         self.sql_alchemy_session = None
         self.connection = None
@@ -65,6 +59,7 @@ class OdbcConnection(object):
         self.profile_columns = True
         self.ansi_table_format = ansi_table_format
         self.ansi_column_format = ansi_column_format
+        self.full_meta_dict = None
 
     def connect(self):
         if self.connection is None:
@@ -74,6 +69,7 @@ class OdbcConnection(object):
             except Exception as e:
                 print(e)
                 raise e
+
     def set_log_session(self, alchemy_session):
         self.sql_alchemy_session = alchemy_session
         self.server_info_id = self.sql_alchemy_session.log_server_info(server_name=self.server_name, server_type=self.server_type)
@@ -90,57 +86,69 @@ class OdbcConnection(object):
             print('\tclosing {}'.format(self.server_name))
             self.connection.close()
 
-
     def tables(self, **kwargs):
         """returns pyodbc.cursor of all tables (see https://github.com/mkleehammer/pyodbc/wiki/Cursor#tablestablenone-catalognone-schemanone-tabletypenone)"""
         self.connect()
         cur = self.connection.cursor()
         return cur.tables(**kwargs)
 
-
-    def tables_meta_dict(self, **kwargs):
-        """forwards kwargs param to self.tables(); returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
+    def create_tables_meta_dict(self):
+        """returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
         """takes pyodbc Cursor object returns list of column names of cursor's result"""
         if self.table_meta_dict is None:
-            temp_tables_cur = self.tables(**kwargs)
+            temp_tables_cur = self.tables()
             cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
             table_meta_fields = list(cursor_column_names(temp_tables_cur))
             table_meta_key = lambda tables_record: tables_record[2]
             self.table_meta_dict = OrderedDict([(table_meta_key(table_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
             for key, meta_dict in self.table_meta_dict.items():
                 self.table_meta_dict[key]['ansi_view_table_name'] = self.ansi_table_format.format(**self.table_meta_dict[key])
-        return self.table_meta_dict
-
 
     def log_tables_info(self):
         """populate table_info table"""
         self.connect()
-        self.tables_meta_dict()
+        self.create_tables_meta_dict()
         for key, meta_dict in self.table_meta_dict.items():
             view_table_info_id = self.sql_alchemy_session.log_viewtable_info(database_info_id=self.database_info_id, ansi_view_table_name=self.table_meta_dict[key]['ansi_view_table_name'], pretty_view_table_name=key)
             self.table_meta_dict[key]['view_table_info_id'] = view_table_info_id
     
     def columns(self,**kwargs):
-        """returns pyodbc.cursor of all columns (see https://github.com/mkleehammer/pyodbc/wiki/Cursor#columnstablenone-catalognone-schemanone-columnnone)"""
+        """returns pyodbc.cursor of all columns in current database
+        (see https://github.com/mkleehammer/pyodbc/wiki/Cursor#columnstablenone-catalognone-schemanone-columnnone)
+        """
         self.connect()
         cur = self.connection.cursor()
         return cur.columns(**kwargs)
-    
 
-    def columns_meta_dict(self, **kwargs):
-        """column version of tables_meta_dict()"""
+    def create_columns_meta_dict(self, **kwargs):
+        """column version of create_tables_meta_dict()"""
         """forwards kwargs param to self.tables(); returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
         """takes pyodbc Cursor object returns list of column names of cursor's result"""
         cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
         temp_tables_cur = self.columns(**kwargs)
         table_meta_fields = list(cursor_column_names(temp_tables_cur))
-        table_meta_key = lambda tables_record: tables_record[2]
+        table_meta_key = lambda tables_record: tables_record[3]
         self.colum_meta_dict = OrderedDict([(table_meta_key(table_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
         for key, meta_dict in self.colum_meta_dict.items():
             print(self.colum_meta_dict[key])
             self.colum_meta_dict[key]['ansi_column_name'] = self.ansi_column_format.format(**self.colum_meta_dict[key])
-        return self.colum_meta_dict
 
+    def get_full_meta_dict(self):
+        """adds 'columns' key to table_meta_dict with column_meta_dict as it's value; 
+        create dict of dict; combines self.table_meta_dict and self.column_meta_dict
+        """
+        if self.full_meta_dict is None:
+            self.connect()
+            self.create_columns_meta_dict()
+            self.create_tables_meta_dict()
+            col = self.colum_meta_dict
+            tab = self.table_meta_dict
+            for key, meta in col.items():
+                if 'columns' not in tab[meta['table_name']]:
+                    tab[meta['table_name']]['columns'] = {}
+                tab[meta['table_name']]['columns'][key] = meta
+            self.full_meta_dict = tab
+        return self.full_meta_dict
 
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
@@ -160,8 +168,8 @@ class OdbcConnection(object):
             # print('\t\t{}: row_count: {}'.format(selectable_name, row_count))
             view_table_profile_id = self.sql_alchemy_session.log_viewtable_profile(view_table_info_id=meta['view_table_info_id'], view_table_row_count=row_count, profile_date=datetime.datetime.now())
             self.table_meta_dict[name]['view_table_profile_id'] = view_table_profile_id
-
-            # if self.profile_columns:
+            if self.profile_columns:
+                pass
             #     for column_meta in self.columns(table=selectable_name):
             #         column_select = self.odbc_columns_2_selectable_name(column_meta)
             #         column_profile_sql = "SELECT DISTINCT {} FROM {};".format(column_select, selectable_name)
@@ -171,8 +179,6 @@ class DenodoProfiler(OdbcConnection):
     def __init__(self, server_name, database_name):
         connection_lambda = denodo_con_lambda
         server_type = 'Denodo'
-        odbc_tables_2_selectable_name = odbc_tables_2_denodo_selectable_name
-        odbc_columns_2_selectable_name = odbc_columns_2_denodo_selectable_name
         ansi_table_format = odbc_denodo_ansi_table_format
         ansi_column_format = odbc_denodo_ansi_column_format
         super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_table_format = ansi_table_format, ansi_column_format = ansi_column_format)
@@ -211,6 +217,19 @@ SELECT * FROM tempdb.dbo.{};"""
         cur.execute(databases_query)
         return cur
 
+def print_dict_dict(in_dict):
+    for outer_key, meta_dict in in_dict.items():
+        print('outer_key: {}'.format(outer_key))
+        for inner_key, inner_value in meta_dict.items():
+            print('\t{}:{}'.format(inner_key, inner_value))
+
+def print_print(in_dict, tab_count=0):
+    for outer_key, outer_value in in_dict.items():
+        print('{}key: {}'.format('\t'*tab_count, outer_key))
+        if isinstance(outer_value, dict):
+            print_print(outer_value, tab_count+1)
+        else:
+            print('{}{}'.format('\t'*tab_count,outer_value))
 
 if __name__ == '__main__':
     session = GenericProfilesOrm.GenericProfiles()
@@ -220,21 +239,26 @@ if __name__ == '__main__':
     denodo.log_tables_info()
     denodo.profile_database()
     tab = denodo.table_meta_dict
-    denodo.columns_meta_dict()
+    denodo.create_columns_meta_dict()
     col = denodo.colum_meta_dict
-    print(col)
+
+    print_dict_dict(tab)
+    print_dict_dict(col)
+
     for key, meta in col.items():
         if 'columns' not in tab[meta['table_name']]:
             tab[meta['table_name']]['columns'] = {}
         tab[meta['table_name']]['columns'][key] = meta
-
     
-    for table_name, table_meta in tab.items():
-        print('table_name = {}'.format(table_name))
-        print('table_name = {}'.format(table_meta))
-        for column_name, column_meta in table_meta['columns'].items():
-            print('column_name = {}'.format(column_name))
-        # exit
+    print_print(tab)
+    
+    # for table_name, table_meta in tab.items():
+    #     print('table_name = {}'.format(table_name))
+    #     # print('table_name = {}'.format(table_meta))
+    #     for column_name, column_meta in table_meta['columns'].items():
+    #         print('column_name = {}'.format(column_name))
+    #         print('column_meta = {}'.format(column_meta))
+    #     # exit
 
     # dsdw = SqlServerProfiler(sql_server_con_lambda, 'STDBDECSUP02', 'DSDW')
     # tabs = denodo.tables()
