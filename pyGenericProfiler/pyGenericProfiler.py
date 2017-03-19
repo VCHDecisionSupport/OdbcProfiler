@@ -171,9 +171,13 @@ class OdbcConnection(object):
                 
                 column_histogram_cur = self.connection.cursor()
                 column_histogram_cur.execute(column_histogram_sql)
-                column_histogram = column_histogram_cur.fetchall()
-                column_histogram_list = [histogram_record for histogram_record in column_histogram]
-                print(list(column_histogram_list))
+                column_histogram_dict = {}
+                # temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = {}
+                for column_histogram_record in column_histogram_cur.fetchall():
+                    column_histogram_dict[column_histogram_record[1]] = column_histogram_record[0]
+                temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = column_histogram_dict
+                # column_histogram_list = [histogram_record for histogram_record in column_histogram]
+                # print(list(column_histogram_list))
 
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
