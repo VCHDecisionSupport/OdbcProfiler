@@ -138,10 +138,42 @@ class OdbcConnection(object):
                 ansi_column_name = column_meta['ansi_column_name']
                 column_distinct_count_sql = 'SELECT COUNT(DISTINCT {}) AS "column_distinct_count" FROM {};'.format(ansi_column_name, ansi_view_table_name)
                 column_meta['column_distinct_count_sql'] = column_distinct_count_sql
+                # create sql code for column value histogram
+                column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_column_name} AS "column_value_string" FROM {ansi_view_table_name} GROUP BY {ansi_column_name};'.format(ansi_column_name=ansi_column_name, ansi_view_table_name=ansi_view_table_name)
+                column_meta['column_histogram_sql'] = column_histogram_sql
                 # add column meta data
                 temp_full_meta_dict[column_meta['table_name']]['columns'][column_name] = column_meta
             self.full_meta_dict = temp_full_meta_dict
         return self.full_meta_dict
+    
+    def execute_profile(self):
+        temp_get_full_meta_dict = self.get_full_meta_dict()
+        for table_name, table_meta in temp_get_full_meta_dict.items():
+            print('execute sql: {}'.format(table_meta['view_table_row_count_sql']))
+            view_table_row_count_cur = self.connection.cursor()
+            view_table_row_count_cur.execute(table_meta['view_table_row_count_sql'])
+            view_table_row_count = view_table_row_count_cur.fetchone()[0]
+            temp_get_full_meta_dict[table_name]['view_table_row_count'] = view_table_row_count
+            print(temp_get_full_meta_dict[table_name]['view_table_row_count'])
+            
+            for column_name, column_meta in temp_get_full_meta_dict[table_name]['columns'].items():
+                print(column_name)
+                column_distinct_count_sql = temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']
+                print('\texecute sql: {}'.format(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']))
+                column_distinct_count_cur = self.connection.cursor()
+                column_distinct_count_cur.execute(column_distinct_count_sql)
+                column_distinct_count = column_distinct_count_cur.fetchone()[0]
+                temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] = column_distinct_count
+                print(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'])
+                
+                column_histogram_sql = temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram_sql']
+                print('\t\texecute sql: {}'.format(column_histogram_sql))
+                
+                column_histogram_cur = self.connection.cursor()
+                column_histogram_cur.execute(column_histogram_sql)
+                column_histogram = column_histogram_cur.fetchall()
+                column_histogram_list = [histogram_record for histogram_record in column_histogram]
+                print(list(column_histogram_list))
 
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
@@ -228,6 +260,7 @@ if __name__ == '__main__':
     denodo = DenodoProfiler('PC', 'wide_world_importers')
     data_model_meta_dict = denodo.get_full_meta_dict()
     print_print(data_model_meta_dict)
+    denodo.execute_profile()
     exit
     # denodo.set_log_session(session)
     # denodo.log_tables_info()
