@@ -3,7 +3,7 @@ import uuid
 import GenericProfilesOrm
 import datetime
 from collections import *
-
+import json
 
 denodo_dsn = 'PC_Denodo'
 
@@ -44,6 +44,9 @@ class OdbcConnection(object):
         self.ansi_table_format = ansi_table_format
         self.ansi_column_format = ansi_column_format
         self.full_meta_dict = None
+        self.full_profile_dict = {server_name:{}}
+        self.full_profile_dict[self.server_name]['server_type'] = self.server_type
+        self.full_profile_dict[self.server_name]['tables'] = {}
 
     def connect(self):
         if self.connection is None:
@@ -144,6 +147,7 @@ class OdbcConnection(object):
                 # add column meta data
                 temp_full_meta_dict[column_meta['table_name']]['columns'][column_name] = column_meta
             self.full_meta_dict = temp_full_meta_dict
+            self.full_profile_dict[self.server_name]['tables'] = temp_full_meta_dict
         return self.full_meta_dict
     
     def execute_profile(self):
@@ -186,7 +190,7 @@ class OdbcConnection(object):
                 except Exception as e:
                     print(e)
         self.full_meta_dict = temp_get_full_meta_dict
-
+        self.full_profile_dict[self.server_name]['tables'] = temp_get_full_meta_dict
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
 
@@ -253,12 +257,6 @@ SELECT * FROM tempdb.dbo.{};"""
         cur.execute(databases_query)
         return cur
 
-def print_dict_dict(in_dict):
-    for outer_key, meta_dict in in_dict.items():
-        print('outer_key: {}'.format(outer_key))
-        for inner_key, inner_value in meta_dict.items():
-            print('\t{}:{}'.format(inner_key, inner_value))
-
 def print_print(in_dict, tab_count=0):
     for outer_key, outer_value in in_dict.items():
         print('{}key: {}'.format('\t'*tab_count, outer_key))
@@ -271,9 +269,9 @@ if __name__ == '__main__':
     session = GenericProfilesOrm.GenericProfiles()
     denodo = DenodoProfiler('PC', 'wide_world_importers')
     data_model_meta_dict = denodo.get_full_meta_dict()
-    print_print(data_model_meta_dict)
+    # print_print(data_model_meta_dict)
     denodo.execute_profile()
-    tmp = denodo.full_meta_dict
+    tmp = denodo.full_profile_dict
     json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
     f = open('full_meta_dict.json','w')
     f.write(str(json_out))
