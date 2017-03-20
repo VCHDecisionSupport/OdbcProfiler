@@ -160,24 +160,32 @@ class OdbcConnection(object):
                 print(column_name)
                 column_distinct_count_sql = temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']
                 print('\texecute sql: {}'.format(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']))
-                column_distinct_count_cur = self.connection.cursor()
-                column_distinct_count_cur.execute(column_distinct_count_sql)
-                column_distinct_count = column_distinct_count_cur.fetchone()[0]
-                temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] = column_distinct_count
-                print(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'])
-                
+                try:
+                    column_distinct_count_cur = self.connection.cursor()
+                    column_distinct_count_cur.execute(column_distinct_count_sql)
+                    column_distinct_count = column_distinct_count_cur.fetchone()[0]
+                    temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] = column_distinct_count
+                    print(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'])
+                except Exception as e:
+                    print('ERROR: removing column: {} from profile'.format(column_name))
+                    print(e)
+                    del temp_get_full_meta_dict[table_name]['columns'][column_name]
+            ## execute column histograms for columns that didn't error
+            for column_name, column_meta in temp_get_full_meta_dict[table_name]['columns'].items():
                 column_histogram_sql = temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram_sql']
                 print('\t\texecute sql: {}'.format(column_histogram_sql))
-                
-                column_histogram_cur = self.connection.cursor()
-                column_histogram_cur.execute(column_histogram_sql)
-                column_histogram_dict = {}
-                # temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = {}
-                for column_histogram_record in column_histogram_cur.fetchall():
-                    column_histogram_dict[column_histogram_record[1]] = column_histogram_record[0]
-                temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = column_histogram_dict
-                # column_histogram_list = [histogram_record for histogram_record in column_histogram]
-                # print(list(column_histogram_list))
+                try:
+                    column_histogram_cur = self.connection.cursor()
+                    column_histogram_cur.execute(column_histogram_sql)
+                    column_histogram_dict = {}
+                    # temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = {}
+                    for column_histogram_record in column_histogram_cur.fetchall():
+                        column_histogram_dict[str(column_histogram_record[1])] = column_histogram_record[0]
+                    print_print(column_histogram_dict)
+                    temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = column_histogram_dict
+                except Exception as e:
+                    print(e)
+        self.full_meta_dict = temp_get_full_meta_dict
 
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
@@ -265,40 +273,24 @@ if __name__ == '__main__':
     data_model_meta_dict = denodo.get_full_meta_dict()
     print_print(data_model_meta_dict)
     denodo.execute_profile()
-    exit
-    # denodo.set_log_session(session)
-    # denodo.log_tables_info()
-    # denodo.profile_database()
-    # tab = denodo.table_meta_dict
-    # denodo.create_columns_meta_dict()
-    # col = denodo.colum_meta_dict
-
-    # print_dict_dict(tab)
-    # print_dict_dict(col)
-
-    # for key, meta in col.items():
-    #     if 'columns' not in tab[meta['table_name']]:
-    #         tab[meta['table_name']]['columns'] = {}
-    #     tab[meta['table_name']]['columns'][key] = meta
-    
-    # print_print(tab)
-    
-    # for table_name, table_meta in tab.items():
-    #     print('table_name = {}'.format(table_name))
-    #     # print('table_name = {}'.format(table_meta))
-    #     for column_name, column_meta in table_meta['columns'].items():
-    #         print('column_name = {}'.format(column_name))
-    #         print('column_meta = {}'.format(column_meta))
-    #     # exit
-
-    # dsdw = SqlServerProfiler(sql_server_con_lambda, 'STDBDECSUP02', 'DSDW')
-    # tabs = denodo.tables()
-    # for tab in tabs:
-    #     print(tab)
-    #     sql = "SELECT COUNT(*) FROM {table_cat}.{table_schem}.{table_name}".format(table_cat=tab.table_cat, table_schem=tab.table_schem, table_name=tab.table_name)
-    #     cur = denodo.connection.cursor()
-    #     row_count = cur.execute(sql).fetchone()
-    #     print(row_count)
+    tmp = denodo.full_meta_dict
+    json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
+    f = open('full_meta_dict.json','w')
+    f.write(str(json_out))
+    f.close()
 
 
+# from PyGenericProfiler import *
 
+# denodo = DenodoProfiler('PC', 'wide_world_importers')
+# data_model_meta_dict = denodo.get_full_meta_dict()
+# print_print(data_model_meta_dict)
+# denodo.execute_profile()
+# tmp = denodo.full_meta_dict
+
+# json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
+# print(json_out)
+
+# f = open('full_meta_dict.json','w')
+# f.write(str(json_out))
+# f.close()
