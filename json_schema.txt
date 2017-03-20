@@ -1,0 +1,41 @@
+{
+    'servers':
+        {
+            server_name:
+            {
+                'server_type':server_type,
+                'databases':
+                {
+                    database_name :
+                    {
+                        'server_odbc_connection_string':server_odbc_connection_string,
+                        'tables':
+                        {
+                            table_name : 
+                            {
+                                "ansi_view_table_name":ansi_view_table_name,
+                                "view_table_row_count":view_table_row_count,
+                                ... other odbc table meta data fields,
+                                "columns":
+                                {
+                                    column_name:
+                                    {
+                                        "ansi_column_name":ansi_column_name,
+                                        "column_distinct_count":column_distinct_count,
+                                        "column_histogram":
+                                        {
+                                            column_value_str:column_value_count
+                                            ... other column values,
+                                        }
+                                        ... other odbc column meta data fields,
+                                    }
+                                    ... other columns,
+                                }
+                            },
+                            ... other tables,
+                        }
+                    }
+                }
+        }
+       }
+                }

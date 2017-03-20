@@ -81,7 +81,6 @@ WSGI_APPLICATION = 'ProfilesPortal.wsgi.application'
 #     }
 # }
 
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -92,6 +91,48 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
+# # https://github.com/lionheart/django-pyodbc
+# DATABASES = {
+#    'default': {
+#        'ENGINE': "django_pyodbc",
+#     #    'USER': "sa",
+#     #    'PASSWORD': "2and2is5",
+#        'DSN': "ProfilesPortal",
+#        'NAME': "ProfilesPortal",
+#     #    'OPTIONS': {
+#         #    'host_is_server': True
+#     #    },
+#    }
+# }
+
+
+# # https://github.com/lionheart/django-pyodbc
+# DATABASES = {
+#    'default': {
+#        'ENGINE': "django_pyodbc",
+#        'USER': "sa",
+#        'PASSWORD': "2and2is5",
+#        'NAME': "ProfilesPortal",
+#        'HOST': "localhost\MSSQL",
+#        'PORT':'1433',
+#     #    'OPTIONS': {
+#         #    'host_is_server': True
+#     #    },
+#    }
+# }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'sqlserver_ado',
+#         'NAME': 'ProfilesPortal',
+#         'SERVER': 'localhost',
+#         'USER': 'sa',
+#         'PASSWORD': '2and2is5',
+#     }
+# }
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/1.10/ref/settings/#auth-password-validators

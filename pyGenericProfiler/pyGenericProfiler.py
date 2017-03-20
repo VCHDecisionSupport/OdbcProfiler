@@ -14,14 +14,13 @@ denodo_con_lambda = lambda server_name, database_name, port=9999: "DSN={}".forma
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
 
-odbc_denodo_ansi_table_format = '"{table_cat}"."{table_name}"'
 # see https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function#comments
-odbc_denodo_ansi_column_format = '"{table_cat}"."{table_name}"."{column_name}"'
+odbc_sql_server_ansi_table_format = '"{table_schem}"."{table_name}"'
+odbc_sql_server_ansi_column_format = '"{table_name}"."{column_name}"'
+
+odbc_denodo_ansi_table_format = '"{table_cat}"."{table_name}"'
 odbc_denodo_ansi_column_format = '"{table_name}"."{column_name}"'
 
-def odbc_tables_2_sql_server_selectable_name(odbc_tables_meta_row):
-    """converts results from a standard ODBC `SQLTables` meta data query to Denodo friendly (ie. selectable) object names"""
-    return '"{}"."{}"."{}"'.format(odbc_tables_meta_row[0], odbc_tables_meta_row[1], odbc_tables_meta_row[2])
 
 """takes pyodbc Cursor object returns list of columns names of cursor's result"""
 cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
@@ -35,7 +34,7 @@ class OdbcConnection(object):
         self.server_name = server_name
         self.database_name = database_name
         self.connection_lambda = connection_lambda
-        self.odbc_con_str = self.connection_lambda(self.server_name, self.database_name)
+        self.server_odbc_connection_string = self.connection_lambda(self.server_name, self.database_name)
         self.server_type = server_type
         self.sql_alchemy_session = None
         self.connection = None
@@ -44,15 +43,19 @@ class OdbcConnection(object):
         self.ansi_table_format = ansi_table_format
         self.ansi_column_format = ansi_column_format
         self.full_meta_dict = None
-        self.full_profile_dict = {server_name:{}}
-        self.full_profile_dict[self.server_name]['server_type'] = self.server_type
-        self.full_profile_dict[self.server_name]['tables'] = {}
+        self.full_profile_dict = {'servers':{}}
+        self.full_profile_dict['servers'][self.server_name] = {}
+        self.full_profile_dict['servers'][self.server_name]['server_type'] = self.server_type
+        self.full_profile_dict['servers'][self.server_name]['databases'] = {}
+        self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name] = {}
+        self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['server_odbc_connection_string'] = self.server_odbc_connection_string
+        self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['tables'] = {}
 
     def connect(self):
         if self.connection is None:
-            print('\tconnecting to: {}'.format(self.odbc_con_str))
+            print('\tconnecting to: {}'.format(self.server_odbc_connection_string))
             try:
-                self.connection = pyodbc.connect(self.odbc_con_str)
+                self.connection = pyodbc.connect(self.server_odbc_connection_string)
                 self.odbc_version = self.connection.getinfo(pyodbc.SQL_DRIVER_ODBC_VER)
                 print('\t\tconnected (ODBC version: {})'.format(self.odbc_version))
             except Exception as e:
@@ -67,7 +70,6 @@ class OdbcConnection(object):
     def __del__(self):
         # print('disconnecting dsn name: {}'.format(self.server_name))
         print(self)
-        print(self.__dict__())
         if self.connection is not None:
             print('committing changes to: {}'.format(
                 self.server_name))
@@ -147,7 +149,7 @@ class OdbcConnection(object):
                 # add column meta data
                 temp_full_meta_dict[column_meta['table_name']]['columns'][column_name] = column_meta
             self.full_meta_dict = temp_full_meta_dict
-            self.full_profile_dict[self.server_name]['tables'] = temp_full_meta_dict
+            self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['tables'] = temp_full_meta_dict
         return self.full_meta_dict
     
     def execute_profile(self):
@@ -190,7 +192,7 @@ class OdbcConnection(object):
                 except Exception as e:
                     print(e)
         self.full_meta_dict = temp_get_full_meta_dict
-        self.full_profile_dict[self.server_name]['tables'] = temp_get_full_meta_dict
+        self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['tables'] = temp_get_full_meta_dict
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
 
@@ -233,9 +235,11 @@ class DenodoProfiler(OdbcConnection):
 class SqlServerProfiler(OdbcConnection):
     def __init__(self, server_name, database_name):
         connection_lambda = sql_server_con_lambda
-        self.server_type = 'Sql Server'
-        self.odbc_tables_2_selectable_name = odbc_tables_2_sql_server_selectable_name
-        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = 'Sql Server', odbc_tables_2_selectable_name = odbc_tables_2_sql_server_selectable_name)
+        server_type = 'Sql Server'
+        ansi_table_format = odbc_denodo_ansi_table_format
+        ansi_column_format = odbc_denodo_ansi_column_format
+        # super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = 'Sql Server', odbc_tables_2_selectable_name = odbc_tables_2_sql_server_selectable_name)
+        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_table_format = ansi_table_format, ansi_column_format = ansi_column_format)
 
     def databases(self):
         guid = uuid.uuid1()
@@ -273,22 +277,23 @@ if __name__ == '__main__':
     denodo.execute_profile()
     tmp = denodo.full_profile_dict
     json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
-    f = open('full_meta_dict.json','w')
+    f = open('full_profile_dict.json','w')
     f.write(str(json_out))
     f.close()
 
+from pyGenericProfiler import *
+import pyGenericProfiler
+import json
 
-# from PyGenericProfiler import *
-
-# denodo = DenodoProfiler('PC', 'wide_world_importers')
-# data_model_meta_dict = denodo.get_full_meta_dict()
+denodo = DenodoProfiler('PC', 'wide_world_importers')
+data_model_meta_dict = denodo.get_full_meta_dict()
 # print_print(data_model_meta_dict)
-# denodo.execute_profile()
+denodo.execute_profile()
 # tmp = denodo.full_meta_dict
-
-# json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
+tmp = denodo.full_profile_dict
+json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
 # print(json_out)
 
-# f = open('full_meta_dict.json','w')
-# f.write(str(json_out))
-# f.close()
+f = open('full_profile_dict.json','w')
+f.write(str(json_out))
+f.close()
