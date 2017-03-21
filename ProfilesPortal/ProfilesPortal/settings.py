@@ -81,16 +81,16 @@ WSGI_APPLICATION = 'ProfilesPortal.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ProfilesPortal',
-        'USER': 'sa',
-        'PASSWORD': '2and2is5',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'ProfilesPortal',
+#         'USER': 'sa',
+#         'PASSWORD': '2and2is5',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 # # https://github.com/lionheart/django-pyodbc
 # DATABASES = {
@@ -107,14 +107,14 @@ DATABASES = {
 # }
 
 
-# # https://github.com/lionheart/django-pyodbc
+# # # https://github.com/lionheart/django-pyodbc
 # DATABASES = {
 #    'default': {
 #        'ENGINE': "django_pyodbc",
-#        'USER': "sa",
-#        'PASSWORD': "2and2is5",
+#        'USER': "",
+#        'PASSWORD': "",
 #        'NAME': "ProfilesPortal",
-#        'HOST': "localhost\MSSQL",
+#        'HOST': "STDBDECSUP01",
 #        'PORT':'1433',
 #     #    'OPTIONS': {
 #         #    'host_is_server': True
@@ -126,9 +126,9 @@ DATABASES = {
 #     'default': {
 #         'ENGINE': 'sqlserver_ado',
 #         'NAME': 'ProfilesPortal',
-#         'SERVER': 'localhost',
-#         'USER': 'sa',
-#         'PASSWORD': '2and2is5',
+#         'SERVER': 'STDBDECSUP01',
+#         'USER': '',
+#         'PASSWORD': '',
 #     }
 # }
 

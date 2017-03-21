@@ -4,8 +4,9 @@ import GenericProfilesOrm
 import datetime
 from collections import *
 import json
+import time
 
-denodo_dsn = 'PC_Denodo'
+denodo_dsn = 'DSN_Denodo'
 
 denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
 denodo_con_lambda = lambda server_name, database_name, port=9999: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT={};".format(server_name, database_name, port)
@@ -15,22 +16,24 @@ sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 
 
 
 # see https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function#comments
-odbc_sql_server_ansi_table_format = '"{table_schem}"."{table_name}"'
-odbc_sql_server_ansi_column_format = '"{table_name}"."{column_name}"'
+# odbc_sql_server_ansi_table_format = '"{table_schem}"."{table_name}"'
+odbc_sql_server_ansi_column_table_format = '"{table_schem}"."{table_name}"'
+odbc_sql_server_ansi_column_format = '"{table_schem}"."{table_name}"."{column_name}"'
 
-odbc_denodo_ansi_table_format = '"{table_cat}"."{table_name}"'
-odbc_denodo_ansi_column_format = '"{table_name}"."{column_name}"'
+# odbc_denodo_ansi_table_format = '"{table_schem}"."{table_name}"'
+odbc_denodo_ansi_column_table_format = '"{table_owner}"."{table_name}"'
+odbc_denodo_ansi_column_format = '"{table_owner}"."{table_name}"."{column_name}"'
 
 
 """takes pyodbc Cursor object returns list of columns names of cursor's result"""
 cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
 """takes pyodbc.tables (ie. SQLTables) record and returns table_name"""
-table_meta_key = lambda tables_record: tables_record[2]
+table_meta_key = lambda tables_record: '"'+tables_record[1]+'"."'+tables_record[2]+'"'
 """takes pyodbc.columns (ie. SQLColumns) record and returns column_name"""
-column_meta_key = lambda columns_record: columns_record[3]
+column_meta_key = lambda columns_record: '"'+columns_record[1]+'"."'+columns_record[2]+'"."'+columns_record[3]+'"'
 
 class OdbcConnection(object):
-    def __init__(self, connection_lambda, server_name, database_name, server_type, ansi_table_format, ansi_column_format):
+    def __init__(self, connection_lambda, server_name, database_name, server_type, ansi_column_table_format, ansi_column_format):
         self.server_name = server_name
         self.database_name = database_name
         self.connection_lambda = connection_lambda
@@ -40,8 +43,8 @@ class OdbcConnection(object):
         self.connection = None
         self.table_meta_dict = None
         self.profile_columns = True
-        self.ansi_table_format = ansi_table_format
         self.ansi_column_format = ansi_column_format
+        self.ansi_column_table_format = ansi_column_table_format
         self.full_meta_dict = None
         self.full_profile_dict = {'servers':{}}
         self.full_profile_dict['servers'][self.server_name] = {}
@@ -83,26 +86,6 @@ class OdbcConnection(object):
         cur = self.connection.cursor()
         return cur.tables(**kwargs)
 
-    def create_tables_meta_dict(self):
-        """returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
-        """takes pyodbc Cursor object returns list of column names of cursor's result"""
-        if self.table_meta_dict is None:
-            temp_tables_cur = self.tables()
-            cursor_column_names = lambda cur: map(lambda cur_desc: cur_desc[0], cur.description)
-            table_meta_fields = list(cursor_column_names(temp_tables_cur))
-            self.table_meta_dict = OrderedDict([(table_meta_key(table_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(table_meta_fields,table_meta)])) for table_meta in temp_tables_cur])
-            for key, meta_dict in self.table_meta_dict.items():
-                self.table_meta_dict[key]['ansi_view_table_name'] = self.ansi_table_format.format(**self.table_meta_dict[key])
-                self.table_meta_dict[key]['view_table_row_count_sql'] = 'SELECT COUNT(*) AS "view_table_row_count" FROM {};'.format(self.table_meta_dict[key]['ansi_view_table_name'])
-
-    # def log_tables_info(self):
-    #     """populate table_info table"""
-    #     self.connect()
-    #     self.create_tables_meta_dict()
-    #     for key, meta_dict in self.table_meta_dict.items():
-    #         view_table_info_id = self.sql_alchemy_session.log_viewtable_info(database_info_id=self.database_info_id, ansi_view_table_name=self.table_meta_dict[key]['ansi_view_table_name'], pretty_view_table_name=key)
-    #         self.table_meta_dict[key]['view_table_info_id'] = view_table_info_id
-    
     def columns(self,**kwargs):
         """returns pyodbc.cursor of all columns in current database
         (see https://github.com/mkleehammer/pyodbc/wiki/Cursor#columnstablenone-catalognone-schemanone-columnnone)
@@ -111,7 +94,8 @@ class OdbcConnection(object):
         cur = self.connection.cursor()
         return cur.columns(**kwargs)
 
-    def create_columns_meta_dict(self):
+    def create_meta_dicts(self):
+        print('create_columns_meta_dict')
         """column version of create_tables_meta_dict()"""
         """forwards kwargs param to self.tables(); returns dict(table_names: dict(table_meta_field_name, table_meta_field_value))"""
         """takes pyodbc Cursor object returns list of column names of cursor's result"""
@@ -119,111 +103,95 @@ class OdbcConnection(object):
         temp_columns_cur = self.columns()
         column_meta_fields = list(cursor_column_names(temp_columns_cur))
         
-        self.colum_meta_dict = OrderedDict([(column_meta_key(column_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(column_meta_fields,column_meta)])) for column_meta in temp_columns_cur])
-        for key, meta_dict in self.colum_meta_dict.items():
-            self.colum_meta_dict[key]['ansi_column_name'] = self.ansi_column_format.format(**self.colum_meta_dict[key])
+        self.column_meta_dict = OrderedDict([(column_meta_key(column_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(column_meta_fields,column_meta)])) for column_meta in temp_columns_cur])
+        for ansi_column_table_name, meta_dict in self.column_meta_dict.items():
+            self.column_meta_dict[ansi_column_table_name]['ansi_column_name'] = self.ansi_column_format.format(**self.column_meta_dict[ansi_column_table_name])
+            self.column_meta_dict[ansi_column_table_name]['ansi_column_table_name'] = self.ansi_column_table_format.format(**self.column_meta_dict[ansi_column_table_name])
+            self.column_meta_dict[ansi_column_table_name]['column_distinct_count_sql'] = 'SELECT COUNT(DISTINCT {ansi_column_name}) AS "column_distinct_count" FROM {ansi_column_table_name};'.format(**self.column_meta_dict[ansi_column_table_name])
+            self.column_meta_dict[ansi_column_table_name]['column_histogram_sql'] = 'SELECT COUNT(*) AS "column_value_count", {ansi_column_name} AS "column_value_string" FROM {ansi_column_table_name} GROUP BY {ansi_column_name};'.format(**self.column_meta_dict[ansi_column_table_name])
+        self.table_meta_dict = OrderedDict()
+        for column_name, column in self.column_meta_dict.items():
+            # print(column['ansi_column_table_name'])
+            if column['ansi_column_table_name'] not in self.table_meta_dict:
+                self.table_meta_dict[column['ansi_column_table_name']] = {}
+                self.table_meta_dict[column['ansi_column_table_name']]['ansi_view_table_name'] = column['ansi_column_table_name']
+                self.table_meta_dict[column['ansi_column_table_name']]['view_table_row_count_sql'] = 'SELECT COUNT(*) AS "view_table_row_count" FROM {};'.format(column['ansi_column_table_name'])
+                self.table_meta_dict[column['ansi_column_table_name']]['columns'] = OrderedDict()
+            self.table_meta_dict[column['ansi_column_table_name']]['columns'][column['ansi_column_name']] = column
 
-    def get_full_meta_dict(self):
-        """adds 'columns' key to table_meta_dict with column_meta_dict as it's value; 
-        create dict of dict; combines self.table_meta_dict and self.column_meta_dict
-        """
-        if self.full_meta_dict is None:
-            self.connect()
-            self.create_columns_meta_dict()
-            self.create_tables_meta_dict()
-            col = self.colum_meta_dict
-            temp_full_meta_dict = self.table_meta_dict
-            # loop over each column in column_meta_dict and add it to full_meta_dict
-            for column_name, column_meta in col.items():
-                # add 'columns' as new items into table_meta_dict beside other table level meta data items
-                if 'columns' not in temp_full_meta_dict[column_meta['table_name']]:
-                    temp_full_meta_dict[column_meta['table_name']]['columns'] = {}
-                # create sql code for column distinct count; and add sql code to column_meta_dict (which is then added to full_meta_dict)
-                ansi_view_table_name = temp_full_meta_dict[column_meta['table_name']]['ansi_view_table_name']
-                ansi_column_name = column_meta['ansi_column_name']
-                column_distinct_count_sql = 'SELECT COUNT(DISTINCT {}) AS "column_distinct_count" FROM {};'.format(ansi_column_name, ansi_view_table_name)
-                column_meta['column_distinct_count_sql'] = column_distinct_count_sql
-                # create sql code for column value histogram
-                column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_column_name} AS "column_value_string" FROM {ansi_view_table_name} GROUP BY {ansi_column_name};'.format(ansi_column_name=ansi_column_name, ansi_view_table_name=ansi_view_table_name)
-                column_meta['column_histogram_sql'] = column_histogram_sql
-                # add column meta data
-                temp_full_meta_dict[column_meta['table_name']]['columns'][column_name] = column_meta
-            self.full_meta_dict = temp_full_meta_dict
-            self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['tables'] = temp_full_meta_dict
-        return self.full_meta_dict
-    
     def execute_profile(self):
-        temp_get_full_meta_dict = self.get_full_meta_dict()
-        for table_name, table_meta in temp_get_full_meta_dict.items():
+        print('execute_profile')
+        self.create_meta_dicts()
+        self.column_meta_dict
+        temp_get_full_meta_dict = self.table_meta_dict
+
+        for table_name, table_meta in self.table_meta_dict.items():
             print('execute sql: {}'.format(table_meta['view_table_row_count_sql']))
-            view_table_row_count_cur = self.connection.cursor()
-            view_table_row_count_cur.execute(table_meta['view_table_row_count_sql'])
-            view_table_row_count = view_table_row_count_cur.fetchone()[0]
-            temp_get_full_meta_dict[table_name]['view_table_row_count'] = view_table_row_count
-            print(temp_get_full_meta_dict[table_name]['view_table_row_count'])
-            
-            for column_name, column_meta in temp_get_full_meta_dict[table_name]['columns'].items():
+            try:
+                view_table_row_count_cur = self.connection.cursor()
+                start = time.perf_counter()
+                view_table_row_count_cur.execute(table_meta['view_table_row_count_sql'])
+                view_table_row_count = view_table_row_count_cur.fetchone()[0]
+                view_table_row_count_cur.close()
+                end = time.perf_counter()
+                self.table_meta_dict[table_name]['view_table_row_count'] = view_table_row_count
+                self.table_meta_dict[table_name]['view_table_row_count_execution_time'] = end-start
+                print(self.table_meta_dict[table_name]['view_table_row_count'])
+            except Exception as e:
+                print(e)
+            for column_name, column_meta in self.table_meta_dict[table_name]['columns'].items():
                 print(column_name)
-                column_distinct_count_sql = temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']
-                print('\texecute sql: {}'.format(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']))
+                column_distinct_count_sql = self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']
+                print('\texecute sql: {}'.format(self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']))
                 try:
                     column_distinct_count_cur = self.connection.cursor()
+                    start = time.perf_counter()
                     column_distinct_count_cur.execute(column_distinct_count_sql)
                     column_distinct_count = column_distinct_count_cur.fetchone()[0]
-                    temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] = column_distinct_count
-                    print(temp_get_full_meta_dict[table_name]['columns'][column_name]['column_distinct_count'])
+                    column_distinct_count_cur.close()
+                    end = time.perf_counter()
+                    self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_execution_time'] = end-start
+                    self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] = column_distinct_count
+                    print(self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count'])
                 except Exception as e:
-                    print('ERROR: removing column: {} from profile'.format(column_name))
                     print(e)
-                    del temp_get_full_meta_dict[table_name]['columns'][column_name]
             ## execute column histograms for columns that didn't error
-            for column_name, column_meta in temp_get_full_meta_dict[table_name]['columns'].items():
-                column_histogram_sql = temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram_sql']
+            for column_name, column_meta in self.table_meta_dict[table_name]['columns'].items():
+                column_histogram_sql = self.table_meta_dict[table_name]['columns'][column_name]['column_histogram_sql']
                 print('\t\texecute sql: {}'.format(column_histogram_sql))
-                try:
-                    column_histogram_cur = self.connection.cursor()
-                    column_histogram_cur.execute(column_histogram_sql)
-                    column_histogram_dict = {}
-                    # temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = {}
-                    for column_histogram_record in column_histogram_cur.fetchall():
-                        column_histogram_dict[str(column_histogram_record[1])] = column_histogram_record[0]
-                    print_print(column_histogram_dict)
-                    temp_get_full_meta_dict[table_name]['columns'][column_name]['column_histogram'] = column_histogram_dict
-                except Exception as e:
-                    print(e)
-        self.full_meta_dict = temp_get_full_meta_dict
-        self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['tables'] = temp_get_full_meta_dict
+                if self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] <= 1000:
+                    try:
+                        column_histogram_cur = self.connection.cursor()
+                        start = time.perf_counter()
+                        column_histogram_cur.execute(column_histogram_sql)
+                        column_histogram_dict = {}
+                        # self.table_meta_dict[table_name]['columns'][column_name]['column_histogram'] = {}
+                        for column_histogram_record in column_histogram_cur.fetchall():
+                            column_histogram_dict[str(column_histogram_record[1])] = column_histogram_record[0]
+                        column_histogram_cur.close()
+                        end = time.perf_counter()
+                        # print_print(column_histogram_dict)
+                        self.table_meta_dict[table_name]['columns'][column_name]['column_histogram'] = column_histogram_dict
+                        self.table_meta_dict[table_name]['columns'][column_name]['column_histogram_execution_time'] = end-start
+                    except Exception as e:
+                        print(e)
+                else:
+                    print('column_distinct_count too large: {}'.format(self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count']))
+        self.full_meta_dict = self.table_meta_dict
+        self.full_profile_dict['servers'][self.server_name]['databases'][self.database_name]['tables'] = self.table_meta_dict
     def databases(self):
         raise NotImplemented("ERROR abstract method OdbcConnection.databases() not Implemented: retrieving databases requires a platform depandant implementation")
 
     def switch_database(self, database_name):
         return self.__class__(self.connection_lambda, self.server_name, database_name)
 
-    # def profile_database(self):
-    #     self.connect()
-    #     self.log_tables_info()
-    #     cur = self.connection.cursor()
-    #     for name, meta in self.table_meta_dict.items():
-    #         table_profile_sql = "SELECT COUNT(*) FROM {};".format(meta['ansi_view_table_name'])
-    #         # print('{}'.format(selectable_name))
-    #         row_count = cur.execute(table_profile_sql).fetchone()[0]
-    #         # print('\t\t{}: row_count: {}'.format(selectable_name, row_count))
-    #         view_table_profile_id = self.sql_alchemy_session.log_viewtable_profile(view_table_info_id=meta['view_table_info_id'], view_table_row_count=row_count, profile_date=datetime.datetime.now())
-    #         self.table_meta_dict[name]['view_table_profile_id'] = view_table_profile_id
-    #         if self.profile_columns:
-    #             pass
-            #     for column_meta in self.columns(table=selectable_name):
-            #         column_select = self.odbc_columns_2_selectable_name(column_meta)
-            #         column_profile_sql = "SELECT DISTINCT {} FROM {};".format(column_select, selectable_name)
-            #         column_distinct_count = cur.execute(column_profile_sql).fetchone()[0]
-            #         self.sql_alchemy_session.log_viewtable_profile(ViewTableProfileID=view_table_profile_id, ColumnDistinctRowCount=column_distinct_count, ColumnName=column_select)
 class DenodoProfiler(OdbcConnection):
     def __init__(self, server_name, database_name):
         connection_lambda = denodo_con_lambda
         server_type = 'Denodo'
-        ansi_table_format = odbc_denodo_ansi_table_format
         ansi_column_format = odbc_denodo_ansi_column_format
-        super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_table_format = ansi_table_format, ansi_column_format = ansi_column_format)
+        ansi_column_table_format = odbc_denodo_ansi_column_table_format
+        super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)
 
     def databases(self):
         databases_query = 'SELECT DISTINCT DATABASE_NAME FROM CATALOG_VDP_METADATA_VIEWS();'
@@ -236,10 +204,10 @@ class SqlServerProfiler(OdbcConnection):
     def __init__(self, server_name, database_name):
         connection_lambda = sql_server_con_lambda
         server_type = 'Sql Server'
-        ansi_table_format = odbc_denodo_ansi_table_format
-        ansi_column_format = odbc_denodo_ansi_column_format
+        ansi_column_format = odbc_sql_server_ansi_column_format
+        ansi_column_table_format = odbc_sql_server_ansi_column_table_format
         # super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = 'Sql Server', odbc_tables_2_selectable_name = odbc_tables_2_sql_server_selectable_name)
-        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_table_format = ansi_table_format, ansi_column_format = ansi_column_format)
+        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)
 
     def databases(self):
         guid = uuid.uuid1()
@@ -269,31 +237,58 @@ def print_print(in_dict, tab_count=0):
         else:
             print('{}{}'.format('\t'*tab_count,outer_value))
 
-if __name__ == '__main__':
-    session = GenericProfilesOrm.GenericProfiles()
-    denodo = DenodoProfiler('PC', 'wide_world_importers')
-    data_model_meta_dict = denodo.get_full_meta_dict()
-    # print_print(data_model_meta_dict)
-    denodo.execute_profile()
-    tmp = denodo.full_profile_dict
-    json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
-    f = open('full_profile_dict.json','w')
-    f.write(str(json_out))
-    f.close()
+
 
 from pyGenericProfiler import *
-import pyGenericProfiler
+# import pyGenericProfiler
 import json
 
-denodo = DenodoProfiler('PC', 'wide_world_importers')
-data_model_meta_dict = denodo.get_full_meta_dict()
-# print_print(data_model_meta_dict)
-denodo.execute_profile()
-# tmp = denodo.full_meta_dict
-tmp = denodo.full_profile_dict
-json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
-# print(json_out)
 
-f = open('full_profile_dict.json','w')
-f.write(str(json_out))
-f.close()
+sqlserver = SqlServerProfiler('STDBDECSUP01', 'CommunityMart')
+sqlserver.create_meta_dicts()
+columns_meta = sqlserver.column_meta_dict
+tables_meta = sqlserver.table_meta_dict
+sqlserver.execute_profile()
+
+# denodo = DenodoProfiler('PC', 'wide_world_importers')
+# denodo.create_meta_dicts()
+# columns_meta = denodo.column_meta_dict
+# tables_meta = denodo.table_meta_dict
+# denodo.execute_profile()
+
+# print(list(column_meta.keys()))
+
+# meta_dict = denodo.get_full_meta_dict()
+
+# temp_get_full_meta_dict = denodo.full_meta_dict
+# for table_name, table_meta in temp_get_full_meta_dict.items():
+#     print('table_name: {}'.format(table_name))
+#     print(list(temp_get_full_meta_dict[table_name].keys()))
+# profile_meta = denodo.full_profile_dict
+# for table_name, table_meta in data_model_meta_dict.items():
+#     print(table_name)
+#     for column_name, column_meta in data_model_meta_dict[table_name]['columns'].items():
+#         print(column_name)
+
+# # print_print(data_model_meta_dict)
+# denodo.execute_profile()
+# # tmp = denodo.full_meta_dict
+# tmp = denodo.full_profile_dict
+# json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
+# # print(json_out)
+
+# f = open('full_profile_dict.json','w')
+# f.write(str(json_out))
+# f.close()
+
+if __name__ == '__main__':
+    session = GenericProfilesOrm.GenericProfiles()
+    # denodo = DenodoProfiler('PC', 'wide_world_importers')
+    # data_model_meta_dict = denodo.get_full_meta_dict()
+    # print_print(data_model_meta_dict)
+    # denodo.execute_profile()
+    # tmp = denodo.full_profile_dict
+    # json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
+    # f = open('full_profile_dict.json','w')
+    # f.write(str(json_out))
+    # f.close()
