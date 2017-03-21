@@ -218,7 +218,7 @@ def deploy_sql_alchemy_model_database():
 
 # deploy_sql_alchemy_model_database()
 
-from pyGenericProfiler import *
+# from pyGenericProfiler import *
 
 def save_profile(full_meta):
     meta = full_meta

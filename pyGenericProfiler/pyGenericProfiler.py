@@ -4,11 +4,10 @@ import datetime
 from collections import *
 import json
 import time
+from GenericProfilesOrm import *
 
 denodo_dsn = 'DSN_Denodo'
 
-denodo_con_lambda = lambda server_name, database_name, port=9996: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=gcrowell;PWD=gcrowell;PORT={};".format(server_name, database_name, port)
-denodo_con_lambda = lambda server_name, database_name, port=9999: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT={};".format(server_name, database_name, port)
 denodo_con_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(denodo_dsn)
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
@@ -60,6 +59,16 @@ class OdbcConnection(object):
         self.execute_column_profiles = False
         self.execute_column_histograms = False
         
+        self.profile_saver = GenericProfiles()
+        server_dict = {}
+        server_dict['server_name'] = self.server_name
+        server_dict['server_type'] = self.server_type
+        self.server_info_id = self.profile_saver.log_server_info(**server_dict)
+        database_dict = {}
+        database_dict['database_name'] = self.database_name
+        database_dict['server_info_id'] = self.server_info_id
+        self.database_id = self.profile_saver.log_database_info(**database_dict)
+
     def connect(self):
         if self.connection is None:
             print('\tconnecting to: {}'.format(self.server_odbc_connection_string))
@@ -134,6 +143,14 @@ class OdbcConnection(object):
         temp_get_profile_dict = self.table_meta_dict
 
         for table_name, table_meta in self.table_meta_dict.items():
+            view_table_info_id = None
+            view_table_profile_id = None
+
+            table_info_dict = {}
+            table_info_dict['ansi_view_table_name'] = table_name
+            table_info_dict['database_info_id'] = self.database_info_id
+            view_table_info_id = self.profile_saver.log_viewtable_info(**table_info_dict)
+
             print('execute sql: {}'.format(table_meta['view_table_row_count_sql']))
             try:
                 view_table_row_count_cur = self.connection.cursor()
@@ -145,6 +162,14 @@ class OdbcConnection(object):
                 self.table_meta_dict[table_name]['view_table_row_count'] = view_table_row_count
                 self.table_meta_dict[table_name]['view_table_row_count_execution_time'] = end-start
                 print('view_table_row_count: {} ({} seconds)'.format(self.table_meta_dict[table_name]['view_table_row_count'], self.table_meta_dict[table_name]['view_table_row_count_execution_time']))
+                
+                view_table_profile_dict = {}
+                view_table_profile_dict['view_table_row_count'] = view_table_row_count
+                view_table_profile_dict['view_table_row_count_execution_time'] = end-start
+                view_table_profile_dict['view_table_row_count_date'] = datetime.datetime.today()
+                view_table_profile_dict['view_table_info_id'] = view_table_info_id
+                view_table_profile_id = self.profile_saver.log_viewtable_profile(**view_table_profile_dict)
+
             except Exception as e:
                 print(e)
             if self.execute_column_profiles:
@@ -250,43 +275,10 @@ def print_print(in_dict, tab_count=0):
 
 
 
-# from pyGenericProfiler import *
-# import pyGenericProfiler
-# import json
-
-
-
-
-# denodo = DenodoProfiler('PC', 'wide_world_importers')
-# denodo.create_meta_dicts()
-# columns_meta = denodo.column_meta_dict
-# tables_meta = denodo.table_meta_dict
-# denodo.execute_profile()
-
-# print(list(column_meta.keys()))
-
-# meta_dict = denodo.get_profile_dict()
-
-# temp_get_profile_dict = denodo.profile_dict
-# for table_name, table_meta in temp_get_profile_dict.items():
-#     print('table_name: {}'.format(table_name))
-#     print(list(temp_get_profile_dict[table_name].keys()))
-# for table_name, table_meta in data_model_meta_dict.items():
-#     print(table_name)
-#     for column_name, column_meta in data_model_meta_dict[table_name]['columns'].items():
-#         print(column_name)
-
-# # print_print(data_model_meta_dict)
-# denodo.execute_profile()
-# # tmp = denodo.profile_dict
-# json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
-# # print(json_out)
-
-# f.write(str(json_out))
-# f.close()
 
 if __name__ == '__main__':
-    session = GenericProfilesOrm.GenericProfiles()
+    pass
+    # session = GenericProfilesOrm.GenericProfiles()
     # denodo = DenodoProfiler('PC', 'wide_world_importers')
     # data_model_meta_dict = denodo.get_profile_dict()
     # print_print(data_model_meta_dict)
