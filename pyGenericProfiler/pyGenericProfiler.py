@@ -56,18 +56,18 @@ class OdbcConnection(object):
         self.full_meta['server_info']['database_info'] = {}
         self.full_meta['server_info']['database_info']['database_name'] = self.database_name
         self.full_meta['server_info']['database_info']['view_tables'] = {}
-        self.execute_column_profiles = False
+        self.execute_column_profiles = True
         self.execute_column_histograms = False
         
         self.profile_saver = GenericProfiles()
-        server_dict = {}
-        server_dict['server_name'] = self.server_name
-        server_dict['server_type'] = self.server_type
-        self.server_info_id = self.profile_saver.log_server_info(**server_dict)
-        database_dict = {}
-        database_dict['database_name'] = self.database_name
-        database_dict['server_info_id'] = self.server_info_id
-        self.database_id = self.profile_saver.log_database_info(**database_dict)
+        server_info_dict = {}
+        server_info_dict['server_name'] = self.server_name
+        server_info_dict['server_type'] = self.server_type
+        self.server_info_id = self.profile_saver.log_server_info(**server_info_dict)
+        database_info_dict = {}
+        database_info_dict['database_name'] = self.database_name
+        database_info_dict['server_info_id'] = self.server_info_id
+        self.database_info_id = self.profile_saver.log_database_info(**database_info_dict)
 
     def connect(self):
         if self.connection is None:
@@ -120,6 +120,7 @@ class OdbcConnection(object):
         
         self.column_meta_dict = OrderedDict([(column_meta_key(column_meta), OrderedDict([(meta_meta_desc, meta_data) for meta_meta_desc, meta_data in zip(column_meta_fields,column_meta)])) for column_meta in temp_columns_cur])
         for schema_view_table_name, meta_dict in self.column_meta_dict.items():
+            ansi_column_name = self.ansi_column_format.format(**self.column_meta_dict[schema_view_table_name])
             self.column_meta_dict[schema_view_table_name]['ansi_column_name'] = self.ansi_column_format.format(**self.column_meta_dict[schema_view_table_name])
             self.column_meta_dict[schema_view_table_name]['schema_view_table_name'] = self.ansi_column_table_format.format(**self.column_meta_dict[schema_view_table_name])
             self.column_meta_dict[schema_view_table_name]['column_distinct_count_sql'] = 'SELECT COUNT(DISTINCT {ansi_column_name}) AS "column_distinct_count" FROM {schema_view_table_name};'.format(**self.column_meta_dict[schema_view_table_name])
@@ -139,9 +140,8 @@ class OdbcConnection(object):
     def execute_profile(self):
         print('execute_profile')
         self.create_meta_dicts()
-        self.column_meta_dict
         temp_get_profile_dict = self.table_meta_dict
-
+        profile_datetime = datetime.datetime.today()
         for table_name, table_meta in self.table_meta_dict.items():
             view_table_info_id = None
             view_table_profile_id = None
@@ -149,7 +149,7 @@ class OdbcConnection(object):
             table_info_dict = {}
             table_info_dict['ansi_view_table_name'] = table_name
             table_info_dict['database_info_id'] = self.database_info_id
-            view_table_info_id = self.profile_saver.log_viewtable_info(**table_info_dict)
+            view_table_info_id = self.profile_saver.log_view_table_info(**table_info_dict)
 
             print('execute sql: {}'.format(table_meta['view_table_row_count_sql']))
             try:
@@ -166,17 +166,23 @@ class OdbcConnection(object):
                 view_table_profile_dict = {}
                 view_table_profile_dict['view_table_row_count'] = view_table_row_count
                 view_table_profile_dict['view_table_row_count_execution_time'] = end-start
-                view_table_profile_dict['view_table_row_count_date'] = datetime.datetime.today()
+                view_table_profile_dict['view_table_row_count_date'] = profile_datetime
                 view_table_profile_dict['view_table_info_id'] = view_table_info_id
-                view_table_profile_id = self.profile_saver.log_viewtable_profile(**view_table_profile_dict)
+                view_table_profile_id = self.profile_saver.log_view_table_profile(**view_table_profile_dict)
 
             except Exception as e:
                 print(e)
             if self.execute_column_profiles:
-                for column_name, column_meta in self.table_meta_dict[table_name]['columns'].items():
-                    print(column_name)
-                    column_distinct_count_sql = self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']
-                    print('\texecute sql: {}'.format(self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_sql']))
+                for ansi_column_name, column_meta in self.table_meta_dict[table_name]['columns'].items():
+
+                    column_info_dict = {}
+                    column_info_dict['view_table_info_id'] = view_table_info_id
+                    column_info_dict['ansi_column_name'] = ansi_column_name
+                    column_info_id = self.profile_saver.log_column_info(**column_info_dict)
+
+                    column_distinct_count_sql = self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count_sql']
+                    print('\texecute sql: {}'.format(self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count_sql']))
+
                     try:
                         column_distinct_count_cur = self.connection.cursor()
                         start = time.perf_counter()
@@ -184,35 +190,45 @@ class OdbcConnection(object):
                         column_distinct_count = column_distinct_count_cur.fetchone()[0]
                         column_distinct_count_cur.close()
                         end = time.perf_counter()
-                        self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_execution_time'] = end-start
-                        self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] = column_distinct_count
-                        print('column_distinct_count_execution_time: {} ({} seconds)'.format(self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count'],self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count_execution_time']))
+                        self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count_execution_time'] = end-start
+                        self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count'] = column_distinct_count
+                        print('column_distinct_count_execution_time: {} ({} seconds)'.format(self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count'],self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count_execution_time']))
+                        
+                        column_profile_dict = {}
+                        column_profile_dict['column_info_id'] = column_info_id
+                        column_profile_dict['view_table_profile_id'] = view_table_profile_id
+                        column_profile_dict['column_distinct_count'] = column_distinct_count
+                        column_profile_dict['column_distinct_count_execution_time'] = end-start
+                        column_profile_dict['column_distinct_count_date'] = profile_datetime
+
+                        column_profile_id = self.profile_saver.log_column_profile(**column_profile_dict)
+
                     except Exception as e:
                         print(e)
             if self.execute_column_histograms:
                 ## execute column histograms for columns that didn't error
-                for column_name, column_meta in self.table_meta_dict[table_name]['columns'].items():
-                    column_histogram_sql = self.table_meta_dict[table_name]['columns'][column_name]['column_histogram_sql']
+                for ansi_column_name, column_meta in self.table_meta_dict[table_name]['columns'].items():
+                    column_histogram_sql = self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_histogram_sql']
                     print('\t\texecute sql: {}'.format(column_histogram_sql))
-                    if self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count'] <= 1000:
+                    if self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count'] <= 1000:
                         try:
                             column_histogram_cur = self.connection.cursor()
                             start = time.perf_counter()
                             column_histogram_cur.execute(column_histogram_sql)
                             column_histogram_dict = {}
-                            # self.table_meta_dict[table_name]['columns'][column_name]['column_histogram'] = {}
+                            # self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_histogram'] = {}
                             for column_histogram_record in column_histogram_cur.fetchall():
                                 column_histogram_dict[str(column_histogram_record[1])] = column_histogram_record[0]
                             column_histogram_cur.close()
                             end = time.perf_counter()
                             # print_print(column_histogram_dict)
-                            self.table_meta_dict[table_name]['columns'][column_name]['column_histogram'] = column_histogram_dict
-                            self.table_meta_dict[table_name]['columns'][column_name]['column_histogram_execution_time'] = end-start
-                            print('column_histogram_execution_time: {} ({} seconds)'.format(self.table_meta_dict[table_name]['columns'][column_name]['column_histogram'],self.table_meta_dict[table_name]['columns'][column_name]['column_histogram_execution_time']))
+                            self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_histogram'] = column_histogram_dict
+                            self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_histogram_execution_time'] = end-start
+                            print('column_histogram_execution_time: {} ({} seconds)'.format(self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_histogram'],self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_histogram_execution_time']))
                         except Exception as e:
                             print(e)
                     else:
-                        print('column_distinct_count too large: {}'.format(self.table_meta_dict[table_name]['columns'][column_name]['column_distinct_count']))
+                        print('column_distinct_count too large: {}'.format(self.table_meta_dict[table_name]['columns'][ansi_column_name]['column_distinct_count']))
         self.profile_dict = self.table_meta_dict
     
     def databases(self):
@@ -286,3 +302,6 @@ if __name__ == '__main__':
     # json_out = json.dumps(tmp, separators=(',', ':'), sort_keys=True, indent=4)
     # f.write(str(json_out))
     # f.close()
+    sqlserver = SqlServerProfiler('SPDBDECSUP04', 'CommunityMart')
+    sqlserver.create_meta_dicts()
+    sqlserver.execute_profile()
