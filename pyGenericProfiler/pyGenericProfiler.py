@@ -7,7 +7,7 @@ import time
 from GenericProfilesOrm import *
 
 denodo_dsn = 'DSN_Denodo'
-
+sql_server_dsn = 'DSN_SqlServer'
 denodo_con_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(denodo_dsn)
 
 sql_server_con_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
@@ -38,16 +38,15 @@ def filter_out_view_tables(schema_view_table_name):
 
 class OdbcConnection(object):
     def __init__(self, connection_lambda, server_name, database_name, server_type, ansi_column_table_format, ansi_column_format):
+        self.connection_lambda = connection_lambda
         self.server_name = server_name
         self.database_name = database_name
-        self.connection_lambda = connection_lambda
-        self.server_odbc_connection_string = self.connection_lambda(self.server_name, self.database_name)
         self.server_type = server_type
-        self.sql_alchemy_session = None
-        self.connection = None
-        self.table_meta_dict = None
         self.ansi_column_format = ansi_column_format
         self.ansi_column_table_format = ansi_column_table_format
+        self.server_odbc_connection_string = self.connection_lambda(self.server_name, self.database_name)
+        self.connection = None
+        self.table_meta_dict = None
         self.profile_dict = None
         self.full_meta = {}
         self.full_meta['server_info'] = {}
@@ -79,11 +78,6 @@ class OdbcConnection(object):
             except Exception as e:
                 print(e)
                 raise e
-
-    # def set_log_session(self, alchemy_session):
-        # self.sql_alchemy_session = alchemy_session
-        # self.server_info_id = self.sql_alchemy_session.log_server_info(server_name=self.server_name, server_type=self.server_type)
-        # self.database_info_id = self.sql_alchemy_session.log_database_info(server_info_id=self.server_info_id, database_name=self.database_name)
 
     def __del__(self):
         # print('disconnecting dsn name: {}'.format(self.server_name))

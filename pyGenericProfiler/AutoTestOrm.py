@@ -31,7 +31,7 @@ class server_info(Base):
     )
 
     server_info_id = Column(Integer, primary_key=True)
-    server_name = Column(String(100))
+    server_name = Column(String(100), nullable=False)
     server_type = Column(String(100))
     
     def get_primary_key_value(self):
@@ -91,10 +91,12 @@ class column_info(Base):
     )
 
     column_info_id = Column(Integer, primary_key=True)
-    # view_table_profile_id = Column(ForeignKey('view_table_profile.view_table_profile_id'), nullable=False)
+    view_table_profile_id = Column(ForeignKey('view_table_profile.view_table_profile_id'), nullable=False)
     view_table_info_id = Column(ForeignKey('view_table_info.view_table_info_id'), nullable=False)
     ansi_column_name = Column(String(100))
+    
     view_table_info = relationship('view_table_info')
+    view_table_profile = relationship('view_table_profile')
     
     def get_primary_key_value(self):
         return self.column_info_id
@@ -114,6 +116,7 @@ class column_profile(Base):
     column_distinct_count_date = Column(DateTime)
 
     column_info = relationship('column_info')
+    view_table_profile = relationship('view_table_profile')
     
     def get_primary_key_value(self):
         return self.column_profile_id
@@ -140,6 +143,7 @@ class column_histogram(Base):
     #     self.view_table_info_id = view_table_info_id
     #     self.profile_date = profile_date
     #     self.view_table_row_count = view_table_row_count
+
 
 
 def insert_if_not_exists(session, orm_class, **kwargs):
@@ -191,13 +195,12 @@ class GenericProfiles(object):
 
 
 def deploy_sql_alchemy_model_database():
-    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
-    # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=AutoTest;Trusted_Connection=Yes;")
+    # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+    params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=AutoTest;Trusted_Connection=Yes;")
     engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
     # params = urllib.parse.quote_plus("DRIVER={MySql ODBC 5.3 Unicode Driver};SERVER=localhost;DATABASE=generic_profiles;UID=sa;PWD=2and2is5")
     # engine = create_engine('mysql+pyodbc:///?odbc_connect='+params)
     print(engine)
-
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
