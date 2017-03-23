@@ -170,21 +170,21 @@ class AutoTestOdbc(object):
                     start_time = time.perf_counter()
                     odbc_cur = self.connection.cursor()
                     odbc_cur.execute(column_profile_sql)
-                    column_row_count = odbc_cur.fetchone()[0]
+                    column_distinct_count = odbc_cur.fetchone()[0]
                 except Exception as e:
                     print(e)
                 finally:
                     odbc_cur.close()
-                column_row_count_execution_seconds = time.perf_counter() - start_time
-                column_profile['column_row_count'] = column_row_count
-                column_profile['column_row_count_execution_seconds'] = column_row_count_execution_seconds
-                column_row_count_datetime = profile_datetime
-                column_profile['column_row_count_datetime'] = column_row_count_datetime
+                column_distinct_count_execution_seconds = time.perf_counter() - start_time
+                column_profile['column_distinct_count'] = column_distinct_count
+                column_profile['column_distinct_count_execution_seconds'] = column_distinct_count_execution_seconds
+                column_distinct_count_datetime = profile_datetime
+                column_profile['column_distinct_count_datetime'] = column_distinct_count_datetime
                 column_profile_id = self.profile_saver.log_column_profile(**column_profile)
                 column_profile['column_profile_id'] = column_profile_id
                 self.column_profiles[column_info_dict['ansi_full_column_name']] = column_profile
 
-                if column_row_count <= self.histogram_cutoff:
+                if column_distinct_count <= self.histogram_cutoff:
 
                     column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_full_column_name} AS "column_value" FROM {ansi_full_table_name} GROUP BY {ansi_full_table_name}'.format(**column_info_dict)
                     try:
