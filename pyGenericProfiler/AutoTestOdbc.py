@@ -9,16 +9,17 @@ from AutoTestObjectRelationalMapper import *
 dw_denodo_dsn = 'DSN_Denodo'
 dw_sql_server_dsn = 'DSN_SqlServer'
 
+skip_schemas = 'sys','INFORMATION_SCHEMA'
+
 """takes pyodbc.columns (ie. ODBC meta function SQLColumns) record and returns dict of meta data"""
-def columns_parser(colums_meta_row):
+def columns_parser(columns_meta_row):
     fmt_dict = {}
-    fmt_dict['database_name'] = colums_meta_row[0]
-    fmt_dict['schema_name'] = colums_meta_row[1]
-    fmt_dict['table_name'] = colums_meta_row[2]
-    fmt_dict['column_name'] = colums_meta_row[3]
-    
+    fmt_dict['database_name'] = columns_meta_row[0]
+    fmt_dict['schema_name'] = columns_meta_row[1]
+    fmt_dict['table_name'] = columns_meta_row[2]
+    fmt_dict['column_name'] = columns_meta_row[3]
     row_dict = {}
-    row_dict['column_name'] = colums_meta_row[3]
+    row_dict['column_name'] = columns_meta_row[3]
     row_dict['ansi_full_column_name'] = '"{schema_name}"."{table_name}"."{column_name}"'.format(**fmt_dict)
     row_dict['ansi_full_table_name'] = '"{schema_name}"."{table_name}"'.format(**fmt_dict)
     return row_dict
@@ -29,7 +30,7 @@ def tables_parser(tables_meta_row):
     # row_dict['database_name'] = tables_meta_row[0]
     row_dict['schema_name'] = tables_meta_row[1]
     row_dict['table_name'] = tables_meta_row[2]
-    # row_dict['table_type'] = tables_meta_row[3]
+    row_dict['table_type'] = tables_meta_row[3]
     row_dict['ansi_full_table_name'] = '"{schema_name}"."{table_name}"'.format(**row_dict)
     return row_dict
 
@@ -58,8 +59,11 @@ class AutoTestOdbc(object):
         self.database_info['server_info_id'] = self.server_info_id
         self.database_info_id = self.profile_saver.log_database_info(**self.database_info)
         self.database_info['database_info_id'] = self.database_info_id
-        self.table_profiles = []
-        self.column_profiles = []
+
+        self.profile_columns = True
+        self.histogram_cutoff = 0
+        self.table_profiles = {}
+        self.column_profiles = {}
     def connect(self):
         if self.connection is None:
             print('\tconnecting to: {}'.format(self.server_odbc_connection_string))
@@ -98,78 +102,100 @@ class AutoTestOdbc(object):
 
     
     def process_meta_data(self):
+        self.table_infos = {}
+        print('process tables()')
+        valid_schemas = set()
         for table_meta_row in self.tables():
-            print(tables_parser(table_meta_row))
-            x = tables_parser(table_meta_row)['ansi_full_table_name']
-            print(x)
-        self.table_infos = {(tables_parser(table_meta_row)['ansi_full_table_name'],tables_parser(table_meta_row)) for table_meta_row in self.tables()}
-        self.table_infos = [tables_parser(table_meta_row) for table_meta_row in self.tables()]
-        self.column_infos = [columns_parser(column_meta_row) for column_meta_row in self.columns()]
+            table_info = tables_parser(table_meta_row)
+            if table_info['schema_name'] not in skip_schemas:
+                ansi_full_table_name = table_info['ansi_full_table_name']
+                self.table_infos[ansi_full_table_name] = tables_parser(table_meta_row)
+                valid_schemas.add(table_info['schema_name'])
+        print('process columns()')
+        self.column_infos = {}
+        for schema_name in valid_schemas:
+            for column_meta_row in self.columns(schema=schema_name):
+                ansi_full_column_name = columns_parser(column_meta_row)['ansi_full_column_name']
+                self.column_infos[ansi_full_column_name] = columns_parser(column_meta_row)
+        print('log table_info')
         self.table_info_id_dict = {}
-        for table_meta_dict in self.table_infos:
+        for table_meta_dict in self.table_infos.values():
             table_meta_dict['database_info_id'] = self.database_info_id
             table_info_id = self.profile_saver.log_table_info(**table_meta_dict)
             table_meta_dict['table_info_id'] = table_info_id
-        for column_meta_dict in self.column_infos:
-            table_info_id = table_meta_dict[column_meta_dict['ansi_full_table_name']]['table_info_id']
+            self.table_info_id_dict[table_meta_dict['ansi_full_table_name']] = table_info_id
+        print('log column_info')
+        for column_meta_dict in self.column_infos.values():
+            if column_meta_dict['ansi_full_table_name'] in self.table_info_id_dict:
+                table_info_id = self.table_info_id_dict[column_meta_dict['ansi_full_table_name']]
             column_meta_dict['table_info_id'] = table_info_id
             column_info_id = self.profile_saver.log_column_info(**column_meta_dict)
             column_meta_dict['column_info_id'] = column_info_id
     
     def profile_database(self):
         profile_datetime = datetime.datetime.today()
-        
-        for table_info_dict in self.table_infos:
+        print('profile_database')
+        print('\tprofile tables')
+        for table_info_dict in self.table_infos.values():
+            print(table_info_dict['ansi_full_table_name'])
             table_profile = {}
-
             table_profile['table_info_id'] = table_info_dict['table_info_id']
             table_profile_sql = 'SELECT COUNT(*) AS "table_row_count" FROM {ansi_full_table_name};'.format(**table_info_dict)
-            
-            start_time = time.perf_counter()
-            odbc_cur = self.connection.cursor()
-            odbc_cur.execute(table_profile_sql)
-            table_row_count = odbc_cur.fetchone()[0]
-            odbc_cur.close()
-            table_row_count_execution_seconds = end_time - time.perf_counter()
+            try:
+                start_time = time.perf_counter()
+                odbc_cur = self.connection.cursor()
+                odbc_cur.execute(table_profile_sql)
+                table_row_count = odbc_cur.fetchone()[0]
+            except Exception as e:
+                print(e)
+            finally:
+                odbc_cur.close()
+            table_row_count_execution_seconds = time.perf_counter() - start_time
             table_profile['table_row_count'] = table_row_count
             table_profile['table_row_count_execution_seconds'] = table_row_count_execution_seconds
             table_row_count_datetime = profile_datetime
             table_profile['table_row_count_datetime'] = table_row_count_datetime
             table_profile_id = self.profile_saver.log_table_profile(**table_profile)
             table_profile['table_profile_id'] = table_profile_id
-            self.table_profiles[table_profile['ansi_full_table_name']] = table_profile
-
+            self.table_profiles[table_info_dict['ansi_full_table_name']] = table_profile
         if self.profile_columns:
-            for column_info_dict in self.column_infos:   
+            print('\t\tprofile columns')
+            for column_info_dict in self.column_infos.values():
+                print(column_info_dict['ansi_full_column_name'])
                 column_profile = {}
-                column_profile['table_profile_id'] = self.table_profiles['ansi_full_table_name']['table_profile_id']
-
+                column_profile['table_profile_id'] = self.table_profiles[column_info_dict['ansi_full_table_name']]['table_profile_id']
                 column_profile['column_info_id'] = column_info_dict['column_info_id']
                 column_profile_sql = 'SELECT COUNT(DISTINCT {ansi_full_column_name}) AS "column_distinct_row_count" FROM {ansi_full_table_name};'.format(**column_info_dict)
-                
-                start_time = time.perf_counter()
-                odbc_cur = self.connection.cursor()
-                odbc_cur.execute(column_profile_sql)
-                column_row_count = odbc_cur.fetchone()[0]
-                odbc_cur.close()
-                column_row_count_execution_seconds = end_time - time.perf_counter()
+                try:
+                    start_time = time.perf_counter()
+                    odbc_cur = self.connection.cursor()
+                    odbc_cur.execute(column_profile_sql)
+                    column_row_count = odbc_cur.fetchone()[0]
+                except Exception as e:
+                    print(e)
+                finally:
+                    odbc_cur.close()
+                column_row_count_execution_seconds = time.perf_counter() - start_time
                 column_profile['column_row_count'] = column_row_count
                 column_profile['column_row_count_execution_seconds'] = column_row_count_execution_seconds
                 column_row_count_datetime = profile_datetime
                 column_profile['column_row_count_datetime'] = column_row_count_datetime
                 column_profile_id = self.profile_saver.log_column_profile(**column_profile)
                 column_profile['column_profile_id'] = column_profile_id
-                self.column_profiles[column_profile['ansi_full_column_name']] = column_profile
+                self.column_profiles[column_info_dict['ansi_full_column_name']] = column_profile
 
                 if column_row_count <= self.histogram_cutoff:
 
                     column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_full_column_name} AS "column_value" FROM {ansi_full_table_name} GROUP BY {ansi_full_table_name}'.format(**column_info_dict)
-
-                    start_time = time.perf_counter()
-                    odbc_cur = self.connection.cursor()
-                    odbc_cur.execute(column_histogram_sql)
-                    column_histogram = list(odbc_cur.fetchall())
-                    odbc_cur.close()
+                    try:
+                        start_time = time.perf_counter()
+                        odbc_cur = self.connection.cursor()
+                        odbc_cur.execute(column_histogram_sql)
+                        column_histogram = list(odbc_cur.fetchall())
+                    except Exception as e:
+                        print(e)
+                    finally:
+                        odbc_cur.close()
                     column_histogram_execution_seconds = end_time - time.perf_counter()
                     column_histogram_pairs = []
                     for column_histogram_pair in column_histogram:
@@ -180,6 +206,7 @@ class AutoTestOdbc(object):
                         column_histogram_pair_dict['column_value_string'] = column_histogram_pair[1]
                         column_histogram_pairs.append(column_histogram_pair_dict)
                     column_profile_id = self.profile_saver.log_column_histogram(column_histogram_pairs)
+                break
 class DenodoProfiler(AutoTestOdbc):
     def __init__(self, server_name, database_name):
         connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_denodo_dsn)
@@ -191,8 +218,8 @@ class DenodoProfiler(AutoTestOdbc):
 
 class SqlServerProfiler(AutoTestOdbc):
     def __init__(self, server_name, database_name):
-        connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 13 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
-        connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_sql_server_dsn)
+        connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
+        # connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_sql_server_dsn)
 
         server_type = 'Sql Server'
         ansi_column_format = '"{table_schem}"."{table_name}"'
