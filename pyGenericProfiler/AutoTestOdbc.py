@@ -218,7 +218,10 @@ class AutoTestOdbc(object):
                         column_histogram_pairs.append(column_histogram_pair_dict)
                     """save to logging database with sqlalchemy"""
                     column_profile_id = self.profile_saver.log_column_histogram(column_histogram_pairs)
+
+
 class DenodoProfiler(AutoTestOdbc):
+    """derived class for connecting to Denodo with ODBC"""
     def __init__(self, server_name, database_name):
         connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_denodo_dsn)
         server_type = 'Denodo'
@@ -228,6 +231,7 @@ class DenodoProfiler(AutoTestOdbc):
 
 
 class SqlServerProfiler(AutoTestOdbc):
+    """derived class for connecting to Sql Server with ODBC"""
     def __init__(self, server_name, database_name):
         connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
         connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 13 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
@@ -236,6 +240,4 @@ class SqlServerProfiler(AutoTestOdbc):
         server_type = 'Sql Server'
         ansi_column_format = '"{table_schem}"."{table_name}"'
         ansi_column_table_format = '"{table_schem}"."{table_name}"."{column_name}"'
-        # see https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function#comments
-        # super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = 'Sql Server', odbc_tables_2_selectable_name = odbc_tables_2_sql_server_selectable_name)
         super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)
