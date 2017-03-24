@@ -1,24 +1,23 @@
-# Generic Profiles
+# ODBC Profiler
 
-1. Connect to ODBC combatible database
-1. Create meta dictionary for all tables/views
-1. Create meta dictionary for all columns
-1. Merge above two dictionary into single dictionary repersenting all data model of database
+Profile and log any ODBC compatible data sources
+- Table Row Count
+- Column Distinct Count
+- Column Value Histogram (ie `GROUP BY`)
 
-`DMMD =` Data Model Meta Dictionary:
+## Use Case
 
-    {
-        "top_level_key":"table_name",
-        "type":"object",
-        "properties": {
-            standard ODBC meta data (SQLTables),
-            "columns": {
-                "type":"object",
-                "properties": {
-                    standard ODBC meta data (SQLColumns)
-                }
-            }
-        }
-    }
+Centralized starting point for testing
+- Quick and easy access to volumes for high level validation
+- Compare equivalent tables across different servers
+- Compare Denodo and Sql Server
+- Monitor profiles to detect deviations 
+- Drill into profiles to identify underlying causes
 
-1. asdf
+### Rules Based Monitoring
+
+For each profile measure:
+
+- Simple Moving Average
+- Exponential Moving Average
+- Variance

@@ -25,7 +25,7 @@ metadata = Base.metadata
 # """
 
 params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=AutoTest_TEST;Trusted_Connection=Yes;")
-params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+# params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
 
 class server_info(Base):
     __tablename__ = 'server_info'
@@ -215,7 +215,7 @@ def deploy_sql_alchemy_model_database():
     engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
     # params = urllib.parse.quote_plus("DRIVER={MySql ODBC 5.3 Unicode Driver};SERVER=localhost;DATABASE=generic_profiles;UID=sa;PWD=2and2is5")
     # engine = create_engine('mysql+pyodbc:///?odbc_connect='+params)
-    print(engine)
+    print('\tLogging Engine (SqlAlchemy): {}'.format(engine))
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 

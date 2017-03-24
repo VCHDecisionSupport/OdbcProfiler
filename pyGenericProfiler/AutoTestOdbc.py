@@ -66,21 +66,24 @@ class AutoTestOdbc(object):
         self.column_profiles = {}
     def connect(self):
         if self.connection is None:
-            print('\tconnecting to: {}'.format(self.server_odbc_connection_string))
+            print('\tconnecting to ODBC: {}'.format(self.server_odbc_connection_string))
             try:
                 self.connection = pyodbc.connect(self.server_odbc_connection_string)
                 self.odbc_version = self.connection.getinfo(pyodbc.SQL_DRIVER_ODBC_VER)
                 self.odbc_dbms_name = self.connection.getinfo(pyodbc.SQL_DBMS_NAME)
                 self.odbc_database_name = self.connection.getinfo(pyodbc.SQL_DATABASE_NAME)
                 self.odbc_server_name = self.connection.getinfo(pyodbc.SQL_SERVER_NAME)
-                print('\t\tconnected (ODBC version: {}; dbms_name: {}; database_name {}\nodbc_server_name: {})'.format(self.odbc_version, self.odbc_dbms_name, self.odbc_database_name, self.odbc_server_name))
+                self.server_name = self.odbc_server_name
+                self.database_name = self.odbc_database_name
+                self.server_type = self.odbc_dbms_name
+                print('\t\tconnected.\n\tODBC version: {}\n\tdbms_name: {}\n\todbc_server_name: {}\n\tdatabase_name {}'.format(self.odbc_version, self.odbc_dbms_name, self.odbc_server_name, self.odbc_database_name))
             except Exception as e:
                 print(e)
                 raise e
 
     def __del__(self):
         # print('disconnecting dsn name: {}'.format(self.server_name))
-        print(self)
+        # print(self)
         if self.connection is not None:
             print('committing changes to: {}'.format(
                 self.server_name))
@@ -140,14 +143,17 @@ class AutoTestOdbc(object):
             """save to logging database with sqlalchemy"""
             column_info_id = self.profile_saver.log_column_info(**column_meta_dict)
             column_meta_dict['column_info_id'] = column_info_id
-    
+        print('table count: {} column count: {}'.format(len(self.table_infos), len(self.column_infos)))
     def profile_database(self):
         """execute and log profiling queries"""
         profile_datetime = datetime.datetime.today()
         print('profile_database')
         print('\tprofile tables')
+        current_table_index = 1
         for table_info_dict in self.table_infos.values():
-            print(table_info_dict['ansi_full_table_name'])
+            print('{} of {} {}'.format(current_table_index, len(self.table_infos), table_info_dict['ansi_full_table_name']))
+            current_table_index+=1
+            
             table_profile = {}
             table_profile['table_info_id'] = table_info_dict['table_info_id']
             table_profile_sql = 'SELECT COUNT(*) AS "table_row_count" FROM {ansi_full_table_name};'.format(**table_info_dict)
@@ -161,6 +167,7 @@ class AutoTestOdbc(object):
             finally:
                 odbc_cur.close()
             table_row_count_execution_seconds = time.perf_counter() - start_time
+            print('\ttable_row_count: {} ({}s)'.format(table_row_count, table_row_count_execution_seconds))
             table_profile['table_row_count'] = table_row_count
             table_profile['table_row_count_execution_seconds'] = table_row_count_execution_seconds
             table_row_count_datetime = profile_datetime
@@ -171,7 +178,10 @@ class AutoTestOdbc(object):
             self.table_profiles[table_info_dict['ansi_full_table_name']] = table_profile
         if self.profile_columns:
             print('\t\tprofile columns')
+            current_column_index = 1
             for column_info_dict in self.column_infos.values():
+                print('{} of {} {}'.format(current_column_index, len(column_info_dict), column_info_dict['ansi_full_column_name']))
+                current_column_index+=1
                 print(column_info_dict['ansi_full_column_name'])
                 column_profile = {}
                 column_profile['table_profile_id'] = self.table_profiles[column_info_dict['ansi_full_table_name']]['table_profile_id']
@@ -187,6 +197,7 @@ class AutoTestOdbc(object):
                 finally:
                     odbc_cur.close()
                 column_distinct_count_execution_seconds = time.perf_counter() - start_time
+                print('\t\tcolumn_distinct_count: {} ({}s)'.format(column_distinct_count, column_distinct_count_execution_seconds))
                 column_profile['column_distinct_count'] = column_distinct_count
                 column_profile['column_distinct_count_execution_seconds'] = column_distinct_count_execution_seconds
                 column_distinct_count_datetime = profile_datetime
@@ -197,6 +208,7 @@ class AutoTestOdbc(object):
                 self.column_profiles[column_info_dict['ansi_full_column_name']] = column_profile
                 """group by counts to get frequencies of column values in column (ie histogram)"""
                 if column_distinct_count <= self.histogram_cutoff:
+                    print('\t\t\tcolumn histogram')
                     column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_full_column_name} AS "column_value" FROM {ansi_full_table_name} GROUP BY {ansi_full_table_name}'.format(**column_info_dict)
                     try:
                         start_time = time.perf_counter()
@@ -208,6 +220,7 @@ class AutoTestOdbc(object):
                     finally:
                         odbc_cur.close()
                     column_histogram_execution_seconds = end_time - time.perf_counter()
+
                     column_histogram_pairs = []
                     for column_histogram_pair in column_histogram:
                         column_histogram_pair_dict = {}
@@ -216,6 +229,8 @@ class AutoTestOdbc(object):
                         column_histogram_pair_dict['column_value_count'] = column_histogram_pair[0]
                         column_histogram_pair_dict['column_value_string'] = column_histogram_pair[1]
                         column_histogram_pairs.append(column_histogram_pair_dict)
+                    print('\t\t\tcolumn_histogram_execution_seconds: {}'.format(column_distinct_count_execution_seconds))
+                    
                     """save to logging database with sqlalchemy"""
                     column_profile_id = self.profile_saver.log_column_histogram(column_histogram_pairs)
 
@@ -234,7 +249,7 @@ class SqlServerProfiler(AutoTestOdbc):
     """derived class for connecting to Sql Server with ODBC"""
     def __init__(self, server_name, database_name):
         connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
-        connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 13 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
+        # connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 13 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
         # connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_sql_server_dsn)
 
         server_type = 'Sql Server'

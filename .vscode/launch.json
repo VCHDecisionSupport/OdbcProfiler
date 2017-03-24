@@ -2,10 +2,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "External Terminal/Console",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": true,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "{file}",
+            "cwd": null,
+            "console": "externalTerminal",
+            "env": null,
+            "envFile": "${workspaceRoot}/.env",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit"
+            ]
+        },
+        {
             "name": "Python",
             "type": "python",
             "request": "launch",
-            "stopOnEntry": false,
+            "stopOnEntry": true,
             "pythonPath": "${config.python.pythonPath}",
             "program": "${file}",
             "cwd": "${workspaceRoot}",
@@ -33,11 +49,8 @@
             },
             "program": "${file}",
             "cwd": "${workspaceRoot}",
-<<<<<<< HEAD
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -52,11 +65,8 @@
             "pythonPath": "${config.python.pythonPath}",
             "module": "module.name",
             "cwd": "${workspaceRoot}",
-<<<<<<< HEAD
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -70,15 +80,10 @@
             "stopOnEntry": true,
             "pythonPath": "${config.python.pythonPath}",
             "program": "${file}",
-<<<<<<< HEAD
             "cwd": null,
             "console": "integratedTerminal",
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
-            "cwd": "null",
-            "console": "integratedTerminal",
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit"
@@ -91,15 +96,10 @@
             "stopOnEntry": true,
             "pythonPath": "${config.python.pythonPath}",
             "program": "${file}",
-<<<<<<< HEAD
             "cwd": null,
             "console": "externalTerminal",
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
-            "cwd": "null",
-            "console": "externalTerminal",
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit"
@@ -117,11 +117,8 @@
                 "runserver",
                 "--noreload"
             ],
-<<<<<<< HEAD
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -145,10 +142,7 @@
                 "--no-debugger",
                 "--no-reload"
             ],
-<<<<<<< HEAD
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -164,11 +158,8 @@
             "program": "${workspaceRoot}/run.py",
             "cwd": "${workspaceRoot}",
             "args": [],
-<<<<<<< HEAD
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -176,7 +167,6 @@
             ]
         },
         {
-<<<<<<< HEAD
             "name": "Pyramid",
             "type": "python",
             "request": "launch",
@@ -196,8 +186,6 @@
             ]
         },
         {
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "name": "Watson",
             "type": "python",
             "request": "launch",
@@ -210,11 +198,8 @@
                 "runserver",
                 "--noreload=True"
             ],
-<<<<<<< HEAD
             "env": null,
             "envFile": "${workspaceRoot}/.env",
-=======
->>>>>>> bece7327ee9351c36bfebd29f3412692539d9a5b
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
