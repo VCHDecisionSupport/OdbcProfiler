@@ -76,7 +76,7 @@ class AutoTestOdbc(object):
                 self.server_name = self.odbc_server_name
                 self.database_name = self.odbc_database_name
                 self.server_type = self.odbc_dbms_name
-                print('\t\tconnected.\n\tODBC version: {}\n\tdbms_name: {}\n\todbc_server_name: {}\n\tdatabase_name {}'.format(self.odbc_version, self.odbc_dbms_name, self.odbc_server_name, self.odbc_database_name))
+                print('\t\tconnected.\n\t\tODBC version: {}\n\t\tdbms_name: {}\n\t\todbc_server_name: {}\n\t\tdatabase_name {}'.format(self.odbc_version, self.odbc_dbms_name, self.odbc_server_name, self.odbc_database_name))
             except Exception as e:
                 print(e)
                 raise e
@@ -111,7 +111,7 @@ class AutoTestOdbc(object):
     def process_meta_data(self):
         """update meta data logs"""
         self.table_infos = {}
-        print('process tables()')
+        print('\nprocess tables()')
         valid_schemas = set()
         for table_meta_row in self.tables():
             table_info = tables_parser(table_meta_row)
@@ -147,7 +147,7 @@ class AutoTestOdbc(object):
     def profile_database(self):
         """execute and log profiling queries"""
         profile_datetime = datetime.datetime.today()
-        print('profile_database')
+        print('\nprofile_database')
         print('\tprofile tables')
         current_table_index = 1
         for table_info_dict in self.table_infos.values():
@@ -164,6 +164,7 @@ class AutoTestOdbc(object):
                 table_row_count = odbc_cur.fetchone()[0]
             except Exception as e:
                 print(e)
+                print(table_profile_sql)
             finally:
                 odbc_cur.close()
             table_row_count_execution_seconds = time.perf_counter() - start_time
@@ -177,10 +178,10 @@ class AutoTestOdbc(object):
             table_profile['table_profile_id'] = table_profile_id
             self.table_profiles[table_info_dict['ansi_full_table_name']] = table_profile
         if self.profile_columns:
-            print('\t\tprofile columns')
+            print('\n\nprofile columns')
             current_column_index = 1
             for column_info_dict in self.column_infos.values():
-                print('{} of {} {}'.format(current_column_index, len(column_info_dict), column_info_dict['ansi_full_column_name']))
+                print('\n\t{} of {} {}'.format(current_column_index, len(self.column_infos), column_info_dict['ansi_full_column_name']))
                 current_column_index+=1
                 print(column_info_dict['ansi_full_column_name'])
                 column_profile = {}
@@ -194,6 +195,7 @@ class AutoTestOdbc(object):
                     column_distinct_count = odbc_cur.fetchone()[0]
                 except Exception as e:
                     print(e)
+                    print(column_profile_sql)
                 finally:
                     odbc_cur.close()
                 column_distinct_count_execution_seconds = time.perf_counter() - start_time
@@ -217,9 +219,10 @@ class AutoTestOdbc(object):
                         column_histogram = list(odbc_cur.fetchall())
                     except Exception as e:
                         print(e)
+                        print(column_histogram_sql)
                     finally:
                         odbc_cur.close()
-                    column_histogram_execution_seconds = end_time - time.perf_counter()
+                    column_histogram_execution_seconds = start_time - time.perf_counter()
 
                     column_histogram_pairs = []
                     for column_histogram_pair in column_histogram:

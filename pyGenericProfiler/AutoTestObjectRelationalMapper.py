@@ -215,7 +215,7 @@ def deploy_sql_alchemy_model_database():
     engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
     # params = urllib.parse.quote_plus("DRIVER={MySql ODBC 5.3 Unicode Driver};SERVER=localhost;DATABASE=generic_profiles;UID=sa;PWD=2and2is5")
     # engine = create_engine('mysql+pyodbc:///?odbc_connect='+params)
-    print('\tLogging Engine (SqlAlchemy): {}'.format(engine))
+    print('\tLogging Engine (SqlAlchemy):\n\t\t{}'.format(engine))
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
