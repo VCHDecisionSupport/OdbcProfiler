@@ -31,13 +31,14 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'SqlProfiles.apps.SqlprofilesConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'SqlProfiles.apps.SqlprofilesConfig',
+    
 ]
 
 MIDDLEWARE = [
@@ -80,8 +81,8 @@ DATABASES = {
    'default': {
        'ENGINE': "sql_server.pyodbc",
        'NAME': "ProfilesPortal",
-       'HOST': "PC",
-       'DRIVER':"ODBC Driver 13 for SQL Server"
+       'HOST': "STDBDECSUP01",
+       'DRIVER':"ODBC Driver 11 for SQL Server"
    }
 }
 
