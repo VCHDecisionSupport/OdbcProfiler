@@ -1,6 +1,6 @@
-# ODBC Profiler
+# ODBC Profiler Web App
 
-Profile and log any ODBC compatible data sources
+Automatically profile and visually review Sql Server and Denodo (ODBC driver) data sources
 - Table Row Count
 - Column Distinct Count
 - Column Value Histogram (ie `GROUP BY`)
