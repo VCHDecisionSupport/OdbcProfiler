@@ -74,6 +74,18 @@ WSGI_APPLICATION = 'ProfilesPortal.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 
+
+# # https://github.com/lionheart/django-pyodbc
+DATABASES = {
+   'default': {
+       'ENGINE': "sql_server.pyodbc",
+       'NAME': "ProfilesPortal",
+       'HOST': "PC",
+       'DRIVER':"ODBC Driver 13 for SQL Server"
+   }
+}
+
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',

@@ -25,5 +25,6 @@ class view_table_profile(models.Model):
     # view_table_profile = models.AutoField(primary_key=True)
     profile_date = models.DateTimeField('date this record was created')
     view_table_row_count = models.IntegerField()
+    i_finally_got_it_working = models.IntegerField(default=123)
     view_table_info = models.ForeignKey(view_table_info, default=0)
     
