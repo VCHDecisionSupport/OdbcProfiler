@@ -4,12 +4,12 @@ import datetime
 from collections import *
 import json
 import time
-from AutoTestObjectRelationalMapper import *
+from OdbcProfiler import AutoTestObjectRelationalMapper as orm
 
 dw_denodo_dsn = 'DSN_Denodo'
 dw_sql_server_dsn = 'DSN_SqlServer'
 
-skip_schemas = 'sys','INFORMATION_SCHEMA'
+skip_schemas = 'sys', 'INFORMATION_SCHEMA'
 
 """takes pyodbc.columns (ie. ODBC meta function SQLColumns) record and returns dict of meta data"""
 def columns_parser(columns_meta_row):
@@ -35,18 +35,18 @@ def tables_parser(tables_meta_row):
 
 class AutoTestOdbc(object):
     """base class ODBC data source to be profiled"""
-    def __init__(self, connection_lambda, server_name, database_name, server_type, ansi_column_table_format, ansi_column_format):
+    def __init__(self, connection_lambda, server_name, database_name, ansi_column_table_format, ansi_column_format):
         self.connection_lambda = connection_lambda
         self.server_name = server_name
         self.database_name = database_name
-        self.server_type = server_type
         self.ansi_column_format = ansi_column_format
         self.ansi_column_table_format = ansi_column_table_format
         self.server_odbc_connection_string = self.connection_lambda(self.server_name, self.database_name)
         self.connection = None
+        self.server_type = None
         self.connect()
 
-        self.profile_saver = AutoTestOrm()
+        self.profile_saver = orm.AutoTestOrm()
 
         self.server_info = {}
         self.server_info['server_name'] = self.server_name
@@ -61,7 +61,7 @@ class AutoTestOdbc(object):
         self.database_info['database_info_id'] = self.database_info_id
 
         self.profile_columns = True
-        self.histogram_cutoff = 0
+        self.histogram_cutoff = 1000
         self.table_profiles = {}
         self.column_profiles = {}
     def connect(self):
@@ -183,79 +183,84 @@ class AutoTestOdbc(object):
             for column_info_dict in self.column_infos.values():
                 print('\n\t{} of {} {}'.format(current_column_index, len(self.column_infos), column_info_dict['ansi_full_column_name']))
                 current_column_index+=1
-                print(column_info_dict['ansi_full_column_name'])
-                column_profile = {}
-                column_profile['table_profile_id'] = self.table_profiles[column_info_dict['ansi_full_table_name']]['table_profile_id']
-                column_profile['column_info_id'] = column_info_dict['column_info_id']
-                column_profile_sql = 'SELECT COUNT(DISTINCT {ansi_full_column_name}) AS "column_distinct_row_count" FROM {ansi_full_table_name};'.format(**column_info_dict)
-                try:
-                    start_time = time.perf_counter()
-                    odbc_cur = self.connection.cursor()
-                    odbc_cur.execute(column_profile_sql)
-                    column_distinct_count = odbc_cur.fetchone()[0]
-                except Exception as e:
-                    print(e)
-                    print(column_profile_sql)
-                finally:
-                    odbc_cur.close()
-                column_distinct_count_execution_seconds = time.perf_counter() - start_time
-                print('\t\tcolumn_distinct_count: {} ({}s)'.format(column_distinct_count, column_distinct_count_execution_seconds))
-                column_profile['column_distinct_count'] = column_distinct_count
-                column_profile['column_distinct_count_execution_seconds'] = column_distinct_count_execution_seconds
-                column_distinct_count_datetime = profile_datetime
-                column_profile['column_distinct_count_datetime'] = column_distinct_count_datetime
-                """save to logging database with sqlalchemy"""
-                column_profile_id = self.profile_saver.log_column_profile(**column_profile)
-                column_profile['column_profile_id'] = column_profile_id
-                self.column_profiles[column_info_dict['ansi_full_column_name']] = column_profile
-                """group by counts to get frequencies of column values in column (ie histogram)"""
-                if column_distinct_count <= self.histogram_cutoff:
-                    print('\t\t\tcolumn histogram')
-                    column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_full_column_name} AS "column_value" FROM {ansi_full_table_name} GROUP BY {ansi_full_table_name}'.format(**column_info_dict)
+                ansi_full_table_name = column_info_dict['ansi_full_table_name']
+                print(ansi_full_table_name)
+                """some records from SQLColumns refer to procs/funcs not tables"""
+                if ansi_full_table_name in self.table_profiles:
+                    column_profile = {}
+                    column_profile['table_profile_id'] = self.table_profiles[ansi_full_table_name]['table_profile_id']
+                    column_profile['column_info_id'] = column_info_dict['column_info_id']
+                    column_profile_sql = 'SELECT COUNT(DISTINCT {ansi_full_column_name}) AS "column_distinct_row_count" FROM {ansi_full_table_name};'.format(**column_info_dict)
                     try:
                         start_time = time.perf_counter()
                         odbc_cur = self.connection.cursor()
-                        odbc_cur.execute(column_histogram_sql)
-                        column_histogram = list(odbc_cur.fetchall())
+                        odbc_cur.execute(column_profile_sql)
+                        column_distinct_count = odbc_cur.fetchone()[0]
                     except Exception as e:
                         print(e)
-                        print(column_histogram_sql)
+                        print(column_profile_sql)
                     finally:
                         odbc_cur.close()
-                    column_histogram_execution_seconds = start_time - time.perf_counter()
-
-                    column_histogram_pairs = []
-                    for column_histogram_pair in column_histogram:
-                        column_histogram_pair_dict = {}
-                        column_histogram_pair_dict['column_profile_id'] = column_profile_id
-                        column_histogram_pair_dict['column_info_id'] = column_info_dict['column_info_id']
-                        column_histogram_pair_dict['column_value_count'] = column_histogram_pair[0]
-                        column_histogram_pair_dict['column_value_string'] = column_histogram_pair[1]
-                        column_histogram_pairs.append(column_histogram_pair_dict)
-                    print('\t\t\tcolumn_histogram_execution_seconds: {}'.format(column_distinct_count_execution_seconds))
-                    
+                    column_distinct_count_execution_seconds = time.perf_counter() - start_time
+                    print('\t\tcolumn_distinct_count: {} ({}s)'.format(column_distinct_count, column_distinct_count_execution_seconds))
+                    column_profile['column_distinct_count'] = column_distinct_count
+                    column_profile['column_distinct_count_execution_seconds'] = column_distinct_count_execution_seconds
+                    column_distinct_count_datetime = profile_datetime
+                    column_profile['column_distinct_count_datetime'] = column_distinct_count_datetime
                     """save to logging database with sqlalchemy"""
-                    column_profile_id = self.profile_saver.log_column_histogram(column_histogram_pairs)
+                    column_profile_id = self.profile_saver.log_column_profile(**column_profile)
+                    column_profile['column_profile_id'] = column_profile_id
+                    self.column_profiles[column_info_dict['ansi_full_column_name']] = column_profile
+                    """group by counts to get frequencies of column values in column (ie histogram)"""
+                    if 0 < column_distinct_count <= self.histogram_cutoff:
+                        print('\t\t\tcolumn histogram')
+                        column_histogram_sql = 'SELECT COUNT(*) AS "column_value_count", {ansi_full_column_name} AS "column_value" FROM {ansi_full_table_name} GROUP BY {ansi_full_column_name}'.format(**column_info_dict)
+                        column_histogram = None
+                        try:
+                            start_time = time.perf_counter()
+                            odbc_cur = self.connection.cursor()
+                            odbc_cur.execute(column_histogram_sql)
+                            column_histogram = list(odbc_cur.fetchall())
+                        except Exception as e:
+                            print(e)
+                            print(column_histogram_sql)
+                        finally:
+                            odbc_cur.close()
+                        column_histogram_execution_seconds = start_time - time.perf_counter()
+
+                        column_histogram_pairs = []
+                        for column_histogram_pair in column_histogram:
+                            column_histogram_pair_dict = {}
+                            column_histogram_pair_dict['column_profile_id'] = column_profile_id
+                            column_histogram_pair_dict['column_info_id'] = column_info_dict['column_info_id']
+                            column_histogram_pair_dict['column_value_count'] = column_histogram_pair[0]
+                            column_histogram_pair_dict['column_value_string'] = column_histogram_pair[1]
+                            column_histogram_pairs.append(column_histogram_pair_dict)
+                        print('\t\t\tcolumn_histogram_execution_seconds: {}'.format(column_distinct_count_execution_seconds))
+
+                        """save to logging database with sqlalchemy"""
+                        column_profile_id = self.profile_saver.log_column_histogram(column_histogram_pairs)
 
 
 class DenodoProfiler(AutoTestOdbc):
     """derived class for connecting to Denodo with ODBC"""
-    def __init__(self, server_name, database_name):
-        connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_denodo_dsn)
+    def __init__(self, server_name, database_name, port=9999):
+        connection_lambda = lambda server_name, database_name, port: "DRIVER={DenodoODBC Unicode(x64)};" + "SERVER={};DATABASE={};UID=admin;PWD=admin;PORT={};".format(dw_denodo_dsn)
+        connection_lambda = lambda server_name, database_name: \
+            "DRIVER={DenodoODBC Unicode(x64)};" \
+            +"SERVER={};DATABASE={};Trusted_Connection=Yes;PORT={};".format(server_name, database_name, port)
         server_type = 'Denodo'
         ansi_column_format = '"{table_owner}"."{table_name}"'
         ansi_column_table_format = '"{table_owner}"."{table_name}"."{column_name}"'
-        super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)
+        super(DenodoProfiler, self).__init__(connection_lambda, server_name, database_name, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)
 
 
 class SqlServerProfiler(AutoTestOdbc):
     """derived class for connecting to Sql Server with ODBC"""
-    def __init__(self, server_name, database_name):
-        connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 11 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
-        # connection_lambda = lambda server_name, database_name: "DRIVER={ODBC Driver 13 for SQL Server};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
-        # connection_lambda = lambda server_name, database_name, port=9999: "DSN={}".format(dw_sql_server_dsn)
+    def __init__(self, server_name, database_name, driver):
+        connection_lambda = lambda server_name, database_name: "DRIVER={"+driver+"};" + "SERVER={};DATABASE={};Trusted_Connection=Yes;".format(server_name, database_name)
 
         server_type = 'Sql Server'
         ansi_column_format = '"{table_schem}"."{table_name}"'
         ansi_column_table_format = '"{table_schem}"."{table_name}"."{column_name}"'
-        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, server_type = server_type, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)
+        super(SqlServerProfiler, self).__init__(connection_lambda, server_name, database_name, ansi_column_table_format = ansi_column_table_format, ansi_column_format = ansi_column_format)

@@ -16,7 +16,7 @@ metadata = Base.metadata
 # """
 # https://pypi.python.org/pypi/sqlacodegen
 
-# C:\Users\gcrowell\Source\Repos\GenericProfiles\pyGenericProfiler\PyGenericProfil
+# C:\Users\gcrowell\Source\Repos\GenericProfiles\python_odbc_profiler\PyGenericProfil
 # er>C:\Users\gcrowell\AppData\Local\Programs\Python\Python35\Scripts\sqlacodegen
 # mssql+pyodbc:///?odbc_connect=DRIVER%3D%7BODBC+Driver+11+for+Sql+Server%7D%3BSER
 # VER%3DSTDBDECSUP01%3BDATABASE%3DGenericProfiles%3BTrusted_Connection%3DYes%3B --
@@ -25,7 +25,7 @@ metadata = Base.metadata
 # """
 
 params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=AutoTest_TEST;Trusted_Connection=Yes;")
-# params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
 
 class server_info(Base):
     __tablename__ = 'server_info'
@@ -177,11 +177,14 @@ def insert(session, orm_class, **kwargs):
     session.commit()
     return row.get_primary_key_value()
 def insert_all(session, orm_class, argv):
-    print('insert_all: {}'.format(len(argv)))
-    rows = [orm_class(**kwargs) for kwargs in argv]
-    session.add_all(rows)
-    session.commit()
-
+    try:
+        print('insert_all into {} ({} rows)'.format(orm_class.__name__, len(argv)))
+        print(argv)
+        rows = [orm_class(**kwargs) for kwargs in argv]
+        session.add_all(rows)
+        session.commit()
+    except Exception as e:
+        print(e)
 class AutoTestOrm(object):
     def __init__(self):
         # params = urllib.parse.quote_plus("DRIVER={ODBC Driver 11 for Sql Server};SERVER=STDBDECSUP01;DATABASE=GenericProfiles;Trusted_Connection=Yes;")
@@ -219,28 +222,3 @@ def deploy_sql_alchemy_model_database():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-
-# deploy_sql_alchemy_model_database()
-
-# from pyGenericProfiler import *
-
-
-# sqlserver = SqlServerProfiler('STDBDECSUP03', 'CommunityMart')
-# sqlserver.create_meta_dicts()
-# sqlserver.execute_profile()
-# save_profile(sqlserver.full_meta)
-
-# sqlserver = SqlServerProfiler('SPDBDECSUP04', 'CommunityMart')
-# sqlserver.create_meta_dicts()
-# sqlserver.execute_profile()
-# save_profile(sqlserver.full_meta)
-
-# denodo = DenodoProfiler('foo', 'boo')
-# denodo.create_meta_dicts()
-# denodo.execute_profile()
-# save_profile(denodo.full_meta)
-
-# sqlserver = SqlServerProfiler('SPDBDECSUP04', 'DSDW')
-# sqlserver.create_meta_dicts()
-# sqlserver.execute_profile()
-# save_profile(sqlserver.full_meta)
