@@ -4,3 +4,6 @@ from django.http import HttpResponse
 
 def home(request):
     return render(request, 'SqlProfiles/home.html', {'message':'dictionary value'})
+
+def index(request):
+    return render(request, 'SqlProfiles/index.html')

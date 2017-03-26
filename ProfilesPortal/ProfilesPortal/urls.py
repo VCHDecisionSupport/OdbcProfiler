@@ -20,5 +20,6 @@ import SqlProfiles.views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'', SqlProfiles.views.home, name='home'),
+    url(r'', SqlProfiles.views.index, name='index'),
+    url(r'asdf', SqlProfiles.views.home, name='home'),
 ]
