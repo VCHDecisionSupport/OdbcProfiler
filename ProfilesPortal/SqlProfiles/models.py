@@ -1,30 +1,97 @@
+# This is an auto-generated Django model module.
+# You'll have to do the following manually to clean this up:
+#   * Rearrange models' order
+#   * Make sure each model has one field with primary_key=True
+#   * Make sure each ForeignKey has `on_delete` set to the desired behavior.
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+# Feel free to rename the models, but don't rename db_table values or field names.
+from __future__ import unicode_literals
+
 from django.db import models
+from django.contrib import admin
 
-# Create your models here.
-from django.db import models
+class ColumnHistogram(models.Model):
+    column_histogram_id = models.AutoField(primary_key=True)
+    column_profile_id = models.IntegerField()
+    column_info_id = models.IntegerField()
+    column_value_count = models.IntegerField(blank=True, null=True)
+    column_value_string = models.CharField(max_length=100, blank=True, null=True)
 
-# Create your models here.
+    class Meta:
+        managed = False
+        db_table = 'column_histogram'
 
-class server_info(models.Model):
-    # server_info = models.AutoField(primary_key=True)
-    server_name = models.CharField(max_length=100)
-    server_type = models.CharField(max_length=100)
 
-class database_info(models.Model):
-    # database_info = models.AutoField(primary_key=True)
+class ColumnInfo(models.Model):
+    column_info_id = models.AutoField(primary_key=True)
+    table_info = models.ForeignKey('TableInfo', models.DO_NOTHING)
+    ansi_full_column_name = models.CharField(max_length=100, blank=True, null=True)
+    ansi_full_table_name = models.CharField(max_length=100, blank=True, null=True)
+    column_name = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'column_info'
+
+
+class ColumnProfile(models.Model):
+    column_profile_id = models.AutoField(primary_key=True)
+    column_info_id = models.IntegerField()
+    table_profile = models.ForeignKey('TableProfile', models.DO_NOTHING)
+    column_distinct_count = models.IntegerField(blank=True, null=True)
+    column_distinct_count_execution_seconds = models.DecimalField(max_digits=5, decimal_places=1, blank=True, null=True)
+    column_distinct_count_datetime = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'column_profile'
+
+
+class DatabaseInfo(models.Model):
+    database_info_id = models.AutoField(primary_key=True)
+    server_info = models.ForeignKey('ServerInfo', models.DO_NOTHING)
     database_name = models.CharField(max_length=100)
-    server_info = models.ForeignKey(server_info, default=0)
 
-class view_table_info(models.Model):
-    # view_table_info = models.AutoField(primary_key=True)
-    ansi_view_table_name = models.CharField(max_length=100)
-    pretty_view_table_name = models.CharField(max_length=100)
-    database_info = models.ForeignKey(database_info, default=0)
+    class Meta:
+        managed = False
+        db_table = 'database_info'
 
-class view_table_profile(models.Model):
-    # view_table_profile = models.AutoField(primary_key=True)
-    profile_date = models.DateTimeField('date this record was created')
-    view_table_row_count = models.IntegerField()
-    i_finally_got_it_working = models.IntegerField(default=123)
-    view_table_info = models.ForeignKey(view_table_info, default=0)
-    
+
+class ServerInfo(models.Model):
+    server_info_id = models.AutoField(primary_key=True)
+    server_name = models.CharField(max_length=100)
+    server_type = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'server_info'
+        unique_together = (('server_name', 'server_type'),)
+
+class ServerInfoAdmin(admin.ModelAdmin):
+    list_display = ('server_name',)
+
+class TableInfo(models.Model):
+    table_info_id = models.AutoField(primary_key=True)
+    database_info = models.ForeignKey(DatabaseInfo, models.DO_NOTHING)
+    ansi_full_table_name = models.CharField(max_length=100)
+    schema_name = models.CharField(max_length=100, blank=True, null=True)
+    table_name = models.CharField(max_length=100, blank=True, null=True)
+    logical_path = models.CharField(max_length=100, blank=True, null=True)
+    table_type = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'table_info'
+
+
+class TableProfile(models.Model):
+    table_profile_id = models.AutoField(primary_key=True)
+    table_info = models.ForeignKey(TableInfo, models.DO_NOTHING)
+    table_row_count = models.IntegerField(blank=True, null=True)
+    table_row_count_datetime = models.DateTimeField(blank=True, null=True)
+    table_row_count_execution_seconds = models.DecimalField(max_digits=5, decimal_places=1, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'table_profile'
+        unique_together = (('table_profile_id', 'table_row_count_datetime'),)

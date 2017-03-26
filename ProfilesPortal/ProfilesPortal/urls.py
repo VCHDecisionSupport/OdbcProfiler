@@ -15,11 +15,11 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-
+admin.autodiscover()
 import SqlProfiles.views 
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    url(r'', SqlProfiles.views.index, name='index'),
-    url(r'asdf', SqlProfiles.views.home, name='home'),
+    url(r'^admin/', include(admin.site.urls)),
+    url(r'^dashboard', SqlProfiles.views.index, name='index'),
+    url(r'', SqlProfiles.views.home, name='home'),
 ]

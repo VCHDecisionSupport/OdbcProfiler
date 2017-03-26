@@ -19,7 +19,7 @@ def cli():
 
 def main():
     print('\n\n\n{}AutoTestProfiler{}\n'.format('-'*50, '-'*50))
-    # orm.deploy_sql_alchemy_model_database()
+    orm.deploy_sql_alchemy_model_database()
     server_name = 'STDBDECSUP03'
     server_name = 'PC'
     database_name = 'CommunityMart'

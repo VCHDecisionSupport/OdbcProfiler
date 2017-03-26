@@ -76,13 +76,14 @@ WSGI_APPLICATION = 'ProfilesPortal.wsgi.application'
 # https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 
 
-# # https://github.com/lionheart/django-pyodbc
 DATABASES = {
    'default': {
        'ENGINE': "sql_server.pyodbc",
-       'NAME': "ProfilesPortal",
+       'NAME': "AutoTest",
        'HOST': "STDBDECSUP01",
-       'DRIVER':"ODBC Driver 11 for SQL Server"
+       'DRIVER':"ODBC Driver 11 for SQL Server",
+    #    'USER':'ProfilesPortal',
+    #    'PASSWORD':'2and2is5',
    }
 }
 
